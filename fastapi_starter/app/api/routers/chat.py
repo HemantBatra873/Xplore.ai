@@ -13,7 +13,7 @@ router = APIRouter()
 
 # 聊天接口，使用限流器：同一个客户端每 60 秒最多 20 次请求
 @router.post(
-    "/", summary="与 AI 进行对话", dependencies=[Depends(RateLimiter(times=20, seconds=60))]
+    "/", summary="Chat with the assistant", dependencies=[Depends(RateLimiter(times=20, seconds=60))]
 )
 async def chat_with_ai(
     request: ChatRequest,

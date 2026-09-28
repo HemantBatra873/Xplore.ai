@@ -1,4 +1,4 @@
-# Contributing to FastAPI Starter
+# Contributing to Xplore.ai
 
 Thanks for your interest in contributing! This guide will help you get started.
 

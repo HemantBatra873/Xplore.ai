@@ -41,7 +41,7 @@ def process_document_task(self, document_id: int):
             "document_id": document.id,
             "status": document.status,
             "chunks_count": document.chunks_count,
-            "message": "文档切分与向量化已完成",
+            "message": "Document chunking and embedding completed",
         }
     except Exception as exc:
         db.rollback()

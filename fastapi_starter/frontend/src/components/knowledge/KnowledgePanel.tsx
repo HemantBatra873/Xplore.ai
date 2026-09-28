@@ -20,7 +20,7 @@ export default function KnowledgePanel() {
       const data = await listDocuments()
       setDocuments(data)
     } catch {
-      setError('加载文档失败')
+      setError('Failed to load documents')
     } finally {
       setLoading(false)
     }
@@ -39,7 +39,7 @@ export default function KnowledgePanel() {
       await uploadDocument(file)
       await loadDocs()
     } catch {
-      setError('上传失败，请重试')
+      setError('Upload failed. Please try again.')
     }
     if (fileRef.current) fileRef.current.value = ''
     setUploading(false)
@@ -51,7 +51,7 @@ export default function KnowledgePanel() {
       await deleteDocument(id)
       await loadDocs()
     } catch {
-      setError('删除失败，请重试')
+      setError('Delete failed. Please try again.')
     }
   }
 
@@ -85,9 +85,9 @@ export default function KnowledgePanel() {
         >
           <IconUpload className="mx-auto mb-2 text-[var(--text-tertiary)]" />
           <p className="text-sm text-[var(--text-tertiary)]">
-            {uploading ? '上传中...' : '点击上传文档'}
+            {uploading ? 'Uploading...' : 'Click to upload a document'}
           </p>
-          <p className="text-xs text-[var(--text-tertiary)] mt-1">支持 .txt .md .pdf</p>
+          <p className="text-xs text-[var(--text-tertiary)] mt-1">TXT, Markdown, and PDF files are supported</p>
         </button>
       </div>
 
@@ -100,7 +100,7 @@ export default function KnowledgePanel() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleQuery()}
-            placeholder="搜索知识库..."
+            placeholder="Search the knowledge base..."
             className="w-full h-9 pl-9 pr-3 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-primary)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors"
           />
         </div>
@@ -108,14 +108,14 @@ export default function KnowledgePanel() {
         {querying && (
           <div className="mt-2 text-xs text-[var(--text-tertiary)] flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse" />
-            正在查询...
+            Searching...
           </div>
         )}
 
         {queryResult && (
           <div className="mt-2 p-3 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-primary)]">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-[var(--text-tertiary)] uppercase">查询结果</span>
+              <span className="text-xs font-medium text-[var(--text-tertiary)] uppercase">Query results</span>
               <button onClick={() => setQueryResult(null)} className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)]">
                 <IconX />
               </button>
@@ -123,7 +123,7 @@ export default function KnowledgePanel() {
             <p className="text-sm text-[var(--text-primary)] leading-relaxed">{queryResult.answer}</p>
             {queryResult.source_chunks.length > 0 && (
               <div className="mt-2 pt-2 border-t border-[var(--border-primary)]">
-                <p className="text-xs text-[var(--text-tertiary)] mb-1">来源片段 ({queryResult.source_chunks.length})</p>
+                <p className="text-xs text-[var(--text-tertiary)] mb-1">Source passages ({queryResult.source_chunks.length})</p>
                 {queryResult.source_chunks.map((chunk, i) => (
                   <p key={i} className="text-xs text-[var(--text-tertiary)] mt-1 line-clamp-2">
                     [{i + 1}] {chunk}
@@ -138,7 +138,7 @@ export default function KnowledgePanel() {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wider">
-            文档列表
+            Documents
           </span>
           <button
             onClick={loadDocs}
@@ -156,8 +156,8 @@ export default function KnowledgePanel() {
           </div>
         ) : documents.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-sm text-[var(--text-tertiary)]">暂无文档</p>
-            <p className="text-xs text-[var(--text-tertiary)] mt-1">上传文档以开始构建知识库</p>
+            <p className="text-sm text-[var(--text-tertiary)]">No documents yet</p>
+            <p className="text-xs text-[var(--text-tertiary)] mt-1">Upload a document to build your knowledge base</p>
           </div>
         ) : (
           <div className="space-y-1">

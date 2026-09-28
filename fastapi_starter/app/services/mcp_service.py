@@ -1,8 +1,8 @@
 """
 MCP (Model Context Protocol) 适配层
 
-将系统内部工具封装为标准 MCP Tool 接口，支持统一的注册、发现与调用。
-遵循 Model Context Protocol 规范，工具定义兼容 OpenAI function calling 格式。
+将系统内部Tool封装为标准 MCP Tool 接口，支持统一的注册、发现与调用。
+遵循 Model Context Protocol 规范，Tool定义兼容 OpenAI function calling 格式。
 """
 
 from typing import Any, Optional
@@ -12,20 +12,20 @@ from sqlalchemy.orm import Session
 from app.core.logging import logger
 
 # ==========================================
-# 工具 Schema 定义（集中注册）
+# Tool Schema 定义（集中注册）
 # ==========================================
 _MCP_TOOL_DEFINITIONS = [
     {
         "type": "function",
         "function": {
             "name": "get_current_weather",
-            "description": "获取指定城市的当前天气情况",
+            "description": "Get the current weather for a city",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "location": {
                         "type": "string",
-                        "description": "城市名称，例如：北京、上海",
+                        "description": "City name, for example Beijing or Shanghai",
                     }
                 },
                 "required": ["location"],
@@ -36,17 +36,17 @@ _MCP_TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "create_task",
-            "description": "为当前用户创建一个新的待办任务",
+            "description": "Create a task for the current user",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "title": {
                         "type": "string",
-                        "description": "任务标题，必须简明扼要",
+                        "description": "A concise task title",
                     },
                     "description": {
                         "type": "string",
-                        "description": "任务的详细描述，如果用户没有提供，可以根据上下文生成或者留空",
+                        "description": "An optional task description",
                     },
                 },
                 "required": ["title"],
@@ -57,7 +57,7 @@ _MCP_TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "get_system_status",
-            "description": "获取当前服务器的系统状态，包括 CPU 使用率、内存占用以及磁盘使用情况。如果用户询问服务器是否健康、负载高不高、系统状态等，请调用此工具。",
+            "description": "Get CPU, memory, and disk usage when the user asks about server health or load.",
             "parameters": {"type": "object", "properties": {}, "required": []},
         },
     },
@@ -65,13 +65,13 @@ _MCP_TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "list_tasks",
-            "description": "查询当前用户的待办任务列表。可以按状态过滤（pending/completed），不传参数则返回所有最近任务。",
+            "description": "List recent tasks for the current user, optionally filtered by status.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "status": {
                         "type": "string",
-                        "description": "任务状态过滤，可选值: pending, completed",
+                        "description": "Optional task status filter: pending or completed",
                         "enum": ["pending", "completed"],
                     },
                 },
@@ -83,13 +83,13 @@ _MCP_TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "calculate",
-            "description": "执行数学表达式计算，支持基本四则运算以及 abs、round、min、max、pow 函数。当用户需要进行数学计算时使用此工具。",
+            "description": "Evaluate arithmetic expressions using basic operators and common math functions.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "expression": {
                         "type": "string",
-                        "description": "要计算的数学表达式，例如: 2 + 3 * 4, round(3.14159, 2), pow(2, 10)",
+                        "description": "An expression such as 2 + 3 * 4 or round(3.14159, 2)",
                     },
                 },
                 "required": ["expression"],
@@ -100,14 +100,14 @@ _MCP_TOOL_DEFINITIONS = [
 
 
 # ==========================================
-# 工具处理器注册表
+# Tool处理器注册表
 # 定义 name -> { handler, requires_db, requires_user }
 # ==========================================
 _MCP_TOOL_HANDLERS: dict[str, dict[str, Any]] = {}
 
 
 def _register_handler(name: str, requires_db: bool = False, requires_user: bool = False):
-    """装饰器：注册一个 MCP 工具处理器"""
+    """装饰器：注册一个 MCP Tool处理器"""
 
     def decorator(func):
         _MCP_TOOL_HANDLERS[name] = {
@@ -121,7 +121,7 @@ def _register_handler(name: str, requires_db: bool = False, requires_user: bool 
 
 
 # ==========================================
-# 注册 5 个工具处理器
+# 注册 5 个Tool处理器
 # 使用懒加载避免与 llm_service 循环引用
 # ==========================================
 
@@ -152,10 +152,10 @@ def _handle_create_task(db: Session, user_id: int, title: str, description: str 
     from app.schemas.task import TaskCreate
     from app.services.task_service import TaskService
 
-    logger.info(f"==> [MCP] 模型尝试创建任务: title={title}")
+    logger.info(f"==> [MCP] 模型尝试Create a task: title={title}")
     task_in = TaskCreate(title=title, description=description)
     created_task = TaskService.create_task(db=db, task_in=task_in, owner_id=user_id)
-    return f"任务创建成功！任务ID: {created_task.id}, 标题: {created_task.title}"
+    return f"Task created. ID: {created_task.id}, Title: {created_task.title}"
 
 
 @_register_handler("calculate")
@@ -178,7 +178,7 @@ class MCPService:
 
     @staticmethod
     def list_handlers() -> dict[str, dict[str, Any]]:
-        """获取工具处理器注册表信息（用于内省/调试）"""
+        """获取Tool处理器注册表信息（用于内省/调试）"""
         return {
             name: {
                 "requires_db": info["requires_db"],
@@ -195,16 +195,16 @@ class MCPService:
         user_id: Optional[int] = None,
     ) -> str:
         """
-        统一工具调用入口。
+        统一Tool调用入口。
         根据名称路由到对应的处理器，自动注入 db 和 user_id 依赖。
         """
         if name not in _MCP_TOOL_HANDLERS:
-            logger.warning(f"==> [MCP] 未知工具调用: {name}")
-            return f"未知工具: {name}"
+            logger.warning(f"==> [MCP] 未知Tool调用: {name}")
+            return f"Unknown tool: {name}"
 
         info = _MCP_TOOL_HANDLERS[name]
         handler = info["handler"]
-        logger.info(f"==> [MCP] 调用工具: {name}, 参数: {arguments}")
+        logger.info(f"==> [MCP] 调用Tool: {name}, 参数: {arguments}")
 
         kwargs = dict(arguments)
         if info["requires_db"]:
@@ -216,5 +216,5 @@ class MCPService:
             result = handler(**kwargs)
             return result
         except Exception as e:
-            logger.error(f"==> [MCP] 工具 '{name}' 执行失败: {e}")
-            return f"工具 '{name}' 执行失败: {e}"
+            logger.error(f"==> [MCP] Tool '{name}' execution failed: {e}")
+            return f"Tool '{name}' execution failed: {e}"

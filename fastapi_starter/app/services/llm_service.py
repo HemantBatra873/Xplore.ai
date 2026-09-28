@@ -86,11 +86,11 @@ class _MockChatCompletions:
         if stream:
             return self._stream_response()
         return _MockResponse(
-            content="这是 Mock 模式的回复。系统正以离线演示模式运行，未连接真实 LLM API。你可以继续体验对话流程，但所有回复均为预设内容。"
+            content="This is a mock response. Xplore.ai is running offline without a live LLM provider."
         )
 
     async def _stream_response(self):
-        content = "这是 Mock 模式下的流式回复，用于演示目的。系统当前运行在 Mock 模式，未连接真实 LLM API。"
+        content = "This is a streamed mock response. Xplore.ai is running offline without a live LLM provider."
         for char in content:
             yield _MockChunk(delta=_MockDelta(content=char))
             await asyncio.sleep(0.01)
@@ -111,12 +111,12 @@ class MockLLMClient:
 def get_llm_client(user: User = None) -> LLMClientInfo:
     """
     动态获取 LLM 客户端和模型名称。
-    优先使用用户自定义的配置（支持多租户独立 Key），若用户未配置，则回退到系统全局配置。
+    优先使用用户自定义的配置（支持多租户独立 Key），若用户未配置，则回退到系统global configuration。
     当 LLM_MOCK=true 时，返回 MockLLMClient，无需任何 API Key。
-    用户自定义 Key 解密失败时，自动降级到全局配置。
+    用户自定义 Key 解密失败时，自动降级到global configuration。
     """
     if settings.LLM_MOCK:
-        logger.info("==> LLM Mock 模式已开启，使用模拟客户端")
+        logger.info("==> LLM mock mode is enabled; using the mock client")
         return LLMClientInfo(client=MockLLMClient(), model_name="mock-model")
 
     if user and user.has_custom_llm_key:
@@ -131,7 +131,7 @@ def get_llm_client(user: User = None) -> LLMClientInfo:
             )
             return LLMClientInfo(client=client, model_name=model_name)
         except Exception as e:
-            logger.warning(f"用户 {user.id} 的自定义 LLM Key 解密失败，降级到全局配置: {e}")
+            logger.warning(f"Unable to decrypt the custom LLM key for user {user.id}; using the global configuration: {e}")
 
     global _global_client
     if _global_client is None:
@@ -143,42 +143,42 @@ def get_llm_client(user: User = None) -> LLMClientInfo:
 
 
 # ==========================================
-# 1. 定义本地工具函数 (模拟查询天气与系统状态)
+# 1. 定义本地Tool函数 (模拟查询天气与系统状态)
 # ==========================================
 def get_current_weather(location: str) -> str:
     """模拟天气查询函数，实际中这里可以调用外部天气 API"""
-    logger.info(f"==> 执行本地工具: 查询 {location} 的天气")
+    logger.info(f"==> 执行本地Tool: 查询 {location} 的天气")
     # 为了演示，写死几个城市的天气
     weather_data = {
-        "北京": "晴天，气温 25°C，微风",
-        "上海": "多云，气温 28°C，可能有阵雨",
-        "广州": "小雨，气温 26°C，湿度较高",
+        "Beijing": "Clear, 25 C, light wind",
+        "Shanghai": "Cloudy, 28 C, possible showers",
+        "Guangzhou": "Light rain, 26 C, humid",
     }
     # 默认返回
-    return weather_data.get(location, f"{location} 天气未知，气温大约 20°C")
+    return weather_data.get(location, f"Weather is unknown for {location}; temperature is about 20 C")
 
 
 def get_system_status() -> str:
     """查询服务器当前的系统负载、内存与磁盘占用状态"""
-    logger.info("==> 执行本地工具: 查询系统状态")
+    logger.info("==> 执行本地Tool: 查询系统状态")
     try:
         cpu_percent = psutil.cpu_percent(interval=0.5)
         memory = psutil.virtual_memory()
         disk = psutil.disk_usage("/")
 
         status_info = (
-            f"【CPU 使用率】: {cpu_percent}%\n"
-            f"【内存使用率】: {memory.percent}% (已用: {memory.used / (1024**3):.2f}GB, 总计: {memory.total / (1024**3):.2f}GB)\n"
-            f"【磁盘使用率】: {disk.percent}% (已用: {disk.used / (1024**3):.2f}GB, 总计: {disk.total / (1024**3):.2f}GB)"
+            f"CPU usage: {cpu_percent}%\n"
+            f"Memory usage: {memory.percent}% (used: {memory.used / (1024**3):.2f} GB, total: {memory.total / (1024**3):.2f} GB)\n"
+            f"Disk usage: {disk.percent}% (used: {disk.used / (1024**3):.2f} GB, total: {disk.total / (1024**3):.2f} GB)"
         )
         return status_info
     except Exception as e:
         logger.error(f"获取系统状态失败: {e}")
-        return "无法获取系统状态信息。"
+        return "Unable to read system status."
 
 
 def list_tasks(db: Session, user_id: int, status: str = None) -> str:
-    logger.info(f"==> 执行本地工具: 查询任务列表 (user_id={user_id}, status={status})")
+    logger.info(f"==> 执行本地Tool: 查询任务列表 (user_id={user_id}, status={status})")
     try:
         stmt = select(Task).where(Task.owner_id == user_id)
         if status:
@@ -186,16 +186,16 @@ def list_tasks(db: Session, user_id: int, status: str = None) -> str:
         stmt = stmt.order_by(Task.created_at.desc()).limit(10)
         tasks = list(db.scalars(stmt).all())
         if not tasks:
-            return "当前没有任务。"
+            return "There are no tasks yet."
         lines = []
         for t in tasks:
             lines.append(f"  - [ID:{t.id}] [{t.status}] {t.title}")
             if t.description:
-                lines.append(f"    描述: {t.description}")
-        return "当前任务列表:\n" + "\n".join(lines)
+                lines.append(f"    Description: {t.description}")
+            return "Current tasks:\n" + "\n".join(lines)
     except Exception as e:
         logger.error(f"查询任务列表失败: {e}")
-        return "查询任务列表时发生错误。"
+        return "An error occurred while listing tasks."
 
 
 _ALLOWED_OPS = {
@@ -259,16 +259,16 @@ def safe_eval(expr: str) -> float:
 
 
 def calculate(expression: str) -> str:
-    logger.info(f"==> 执行本地工具: 计算表达式 '{expression}'")
+    logger.info(f"==> 执行本地Tool: 计算表达式 '{expression}'")
     try:
         result = safe_eval(expression)
-        return f"计算结果: {expression} = {result}"
+        return f"Calculation: {expression} = {result}"
     except Exception as e:
-        return f"计算失败: {e}"
+        return f"Calculation failed: {e}"
 
 
-# 工具 Schema 与处理器已统一托管于 MCPService
-# 新增工具时只需在 mcp_service.py 中注册即可
+# Tool Schema 与处理器已统一托管于 MCPService
+# 新增Tool时只需在 mcp_service.py 中注册即可
 
 
 async def _llm_completion_with_retry(llm_client, **kwargs):
@@ -295,7 +295,7 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
     info = get_llm_client(user)
 
     if not info.client.api_key:
-        return "【系统提示】大模型 API Key 尚未配置，请在系统或个人设置中配置。"
+        return "System notice: no LLM API key is configured. Add one in system or personal settings."
 
     started_at = start_timer()
 
@@ -303,7 +303,7 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
     messages = [
         {
             "role": "system",
-            "content": "你是一个有用的 AI 助手，同时你也是用户的私人日程管理专家。你可以调用工具来获取实时信息或帮助用户创建任务。如果工具返回了结果，请用自然语言总结并回答用户。",
+            "content": "You are a helpful assistant and a personal task-management expert. Use tools to retrieve information or create tasks, then summarize tool results naturally.",
         },
         {"role": "user", "content": message},
     ]
@@ -314,14 +314,14 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
     final_reply = None
 
     try:
-        # 第一轮调用：告诉模型用户的问题，并附带工具列表
+        # 第一轮调用：告诉模型用户的问题，并附带Tool列表
         logger.info("==> [Round 1] 正在请求大模型...")
 
         # 针对部分模型（如 Qwen2.5）强化 Prompt
         system_prompt = (
-            "你是一个有用的 AI 助手，同时你也是用户的私人日程管理专家。"
-            "当用户要求你创建任务、复习计划、日程等事项时，你必须使用 'create_task' 工具来创建任务，不要仅仅用文字回答。"
-            "调用工具时请直接返回合法的 JSON 格式工具调用指令，不要在前面或后面附加任何乱码或多余文本。"
+            "You are a helpful assistant and a personal task-management expert. "
+            "When the user asks you to create a task, study plan, or schedule item, you must use the 'create_task' tool. "
+            "Return valid JSON tool calls without extra text around them."
         )
         messages[0]["content"] = system_prompt
 
@@ -341,9 +341,9 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
         total_completion_tokens += completion_tokens
         total_tokens += used_tokens
 
-        # 检查模型是否决定调用工具
+        # 检查模型是否决定调用Tool
         if response_message.tool_calls:
-            logger.info("==> 模型决定调用工具！")
+            logger.info("==> 模型决定调用Tool！")
             messages.append(response_message)
             tool_calls_payload = serialize_tool_calls(response_message.tool_calls)
 
@@ -353,7 +353,7 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
 
                 tool_result = ""
                 if function_name == "create_task":
-                    logger.info(f"==> 模型尝试创建任务: {arguments}")
+                    logger.info(f"==> 模型尝试Create a task: {arguments}")
                     if db and current_user_id:
                         tool_result = await MCPService.call_tool(
                             name=function_name,
@@ -362,7 +362,7 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
                             user_id=current_user_id,
                         )
                     else:
-                        tool_result = "任务创建失败：未获取到数据库连接或用户登录状态。"
+                        tool_result = "Task creation failed: no database connection or signed-in user was available."
 
                 elif function_name == "list_tasks":
                     tool_result = await MCPService.call_tool(
@@ -378,7 +378,7 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
                         arguments=arguments,
                     )
 
-                # 将工具的执行结果追加到上下文中
+                # 将Tool的执行结果追加到上下文中
                 messages.append(
                     {
                         "role": "tool",
@@ -389,7 +389,7 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
                 )
 
             # 第二轮调用
-            logger.info("==> [Round 2] 工具结果已返回，正在请求大模型生成最终回答...")
+            logger.info("==> [Round 2] Tool结果已返回，正在请求大模型生成最终回答...")
             second_response = await _llm_completion_with_retry(
                 info.client,
                 model=info.model_name,
@@ -419,7 +419,7 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
             return final_reply
 
         else:
-            logger.info("==> 模型没有调用工具，直接返回了回答。")
+            logger.info("==> 模型没有调用Tool，直接返回了回答。")
             final_reply = response_message.content
             if db:
                 create_llm_call_log(
@@ -454,7 +454,7 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
                 status="failed",
                 error_message=str(e),
             )
-        return f"【系统提示】模型调用失败，请检查网络或 API 配置。错误详情: {str(e)}"
+        return f"System notice: the model call failed. Check the network or API configuration. Details: {str(e)}"
 
 
 async def generate_chat_reply_stream(message: str, db: Session = None, current_user_id: int = None):
@@ -466,11 +466,11 @@ async def generate_chat_reply_stream(message: str, db: Session = None, current_u
     info = get_llm_client(user)
 
     if not info.client.api_key:
-        yield 'data: {"error": "API Key 未配置"}\n\n'
+        yield 'data: {"error": "No API key is configured"}\n\n'
         return
 
     messages = [
-        {"role": "system", "content": "你是一个有用的 AI 助手。"},
+        {"role": "system", "content": "You are a helpful assistant."},
         {"role": "user", "content": message},
     ]
 

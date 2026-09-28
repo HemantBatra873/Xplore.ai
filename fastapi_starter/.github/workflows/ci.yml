@@ -88,4 +88,4 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build Docker image
-        run: docker build -t fastapi-starter:ci .
+        run: docker build -t xplore-ai:ci .

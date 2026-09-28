@@ -9,25 +9,25 @@ function formatNumber(n: number): string {
 const cards = [
   {
     key: 'total_calls' as const,
-    label: '总调用次数',
+    label: 'Total calls',
     format: (s: LLMStats) => formatNumber(s.total_calls),
-    sub: (s: LLMStats) => `${formatNumber(s.successful_calls)} 成功 / ${formatNumber(s.failed_calls)} 失败`,
+    sub: (s: LLMStats) => `${formatNumber(s.successful_calls)} Success / ${formatNumber(s.failed_calls)} Failed`,
   },
   {
     key: 'total_tokens' as const,
-    label: '总 Token 量',
+    label: 'Total tokens',
     format: (s: LLMStats) => formatNumber(s.total_tokens),
     sub: () => '',
   },
   {
     key: 'avg_latency_ms' as const,
-    label: '平均耗时',
+    label: 'Average latency',
     format: (s: LLMStats) => `${(s.avg_latency_ms / 1000).toFixed(2)}s`,
     sub: () => '',
   },
   {
     key: 'total_cost_usd' as const,
-    label: '总成本',
+    label: 'Total cost',
     format: (s: LLMStats) => `$${s.total_cost_usd.toFixed(4)}`,
     sub: () => '',
   },

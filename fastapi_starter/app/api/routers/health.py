@@ -46,7 +46,7 @@ async def _check_ollama() -> dict:
         return {"status": "down", "error": str(e)}
 
 
-@router.get("/", summary="健康检查", tags=["Health"])
+@router.get("/", summary="Health check", tags=["Health"])
 async def health_check():
     db_status = await _check_database()
     redis_status = await _check_redis()

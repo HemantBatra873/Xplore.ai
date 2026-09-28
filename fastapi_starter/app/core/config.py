@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     """
 
     # 项目基础信息
-    PROJECT_NAME: str = "FastAPI Starter"
+    PROJECT_NAME: str = "Xplore.ai"
     VERSION: str = "0.1.0"
     TESTING: bool = False
 
@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     EMBEDDING_API_KEY: str = "ollama"
     EMBEDDING_MODEL_NAME: str = "bge-m3"
 
-    # Ollama 服务地址（用于健康检查等）
+    # Ollama 服务地址（用于Health check等）
     OLLAMA_BASE_URL: str = "http://localhost:11434/v1"
 
     # RAG 配置
@@ -57,8 +57,8 @@ class Settings(BaseSettings):
             import logging
 
             logging.getLogger(__name__).warning(
-                "LLM_API_KEY 未设置，已自动启用 Mock 模式。"
-                "设置 LLM_API_KEY 或 LLM_MOCK=false 可关闭。"
+                "LLM_API_KEY is empty, so mock mode has been enabled. "
+                "Set LLM_API_KEY or LLM_MOCK=false to change this behavior."
             )
             self.LLM_MOCK = True
         return self

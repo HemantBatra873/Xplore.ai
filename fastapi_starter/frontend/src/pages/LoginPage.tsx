@@ -36,14 +36,14 @@ export default function LoginPage() {
       if (err && typeof err === 'object' && 'response' in err) {
         const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } }
         if (axiosErr.response?.status === 401) {
-          setError('邮箱或密码错误')
+          setError('Incorrect email or password')
         } else if (axiosErr.response?.data?.detail) {
           setError(axiosErr.response.data.detail)
         } else {
-          setError('登录失败，请稍后重试')
+          setError('Sign-in failed. Please try again.')
         }
       } else {
-        setError('连接服务器失败，请检查网络')
+        setError('Unable to connect to the server')
       }
     } finally {
       setLoading(false)
@@ -62,10 +62,10 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">
-            FastAPI AI Agent
+            Xplore.ai
           </h1>
           <p className="text-sm text-[var(--text-tertiary)] mt-1">
-            登录以继续使用
+            Sign in to continue
           </p>
         </div>
 
@@ -75,20 +75,20 @@ export default function LoginPage() {
               to="/auth/login"
               className="flex-1 pb-3 text-sm font-medium text-center text-brand-500 border-b-2 border-brand-500"
             >
-              登录
+              Sign in
             </Link>
             <Link
               to="/auth/register"
               className="flex-1 pb-3 text-sm font-medium text-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
             >
-              注册
+              Create account
             </Link>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                邮箱
+                Email
               </label>
               <input
                 id="email"
@@ -103,7 +103,7 @@ export default function LoginPage() {
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                密码
+                Password
               </label>
               <input
                 id="password"
@@ -127,7 +127,7 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full py-2.5 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? '登录中...' : '登录'}
+              {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
 
@@ -137,7 +137,7 @@ export default function LoginPage() {
               onClick={() => setShowTokenLogin(!showTokenLogin)}
               className="text-xs text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors"
             >
-              {showTokenLogin ? '收起' : '粘贴 Token 直接登录'}
+              {showTokenLogin ? 'Hide' : 'Sign in with a token'}
             </button>
 
             {showTokenLogin && (
@@ -146,7 +146,7 @@ export default function LoginPage() {
                   type="text"
                   value={tokenInput}
                   onChange={(e) => setTokenInput(e.target.value)}
-                  placeholder="粘贴 JWT Token..."
+                  placeholder="Paste a JWT token..."
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-colors"
                 />
                 <button
@@ -155,7 +155,7 @@ export default function LoginPage() {
                   disabled={!tokenInput.trim()}
                   className="w-full py-2 rounded-lg border border-brand-500/30 text-brand-500 text-sm font-medium hover:bg-brand-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  确认
+                  Continue
                 </button>
               </div>
             )}
@@ -163,7 +163,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center mt-6 text-xs text-[var(--text-tertiary)]">
-          FastAPI AI Agent v0.1.0
+          Xplore.ai v0.1.0
         </p>
       </div>
     </div>

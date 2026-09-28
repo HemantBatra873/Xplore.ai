@@ -52,16 +52,12 @@ def seed():
             filename="welcome.txt",
             file_type="txt",
             content=(
-                "欢迎使用 FastAPI Starter 知识库系统！\n\n"
-                "这是一个基于 RAG（检索增强生成）的智能问答系统。\n"
-                "它的工作原理如下：\n"
-                "1. 上传文档后，系统会自动切分文本、生成向量并存入 pgvector\n"
-                "2. 提问时，先检索最相关的文档片段\n"
-                "3. 可选的 BGE-Reranker 对候选片段进行重排序\n"
-                "4. 将最相关的片段作为上下文发送给大模型生成答案\n\n"
-                "系统还支持 Tool Calling（天气查询、任务管理、计算器、系统状态）、\n"
-                "多轮对话记忆、SSE 流式输出、API Key 加密存储等高级功能。\n"
-                "试试问我：'这个系统有哪些功能？'"
+                "Welcome to the Xplore.ai knowledge base.\n\n"
+                "Xplore.ai uses retrieval-augmented generation for grounded answers.\n"
+                "Uploaded documents are chunked, embedded, and stored in pgvector.\n"
+                "Queries retrieve relevant passages before sending context to the LLM.\n\n"
+                "The foundation also supports tool calling, conversation memory, SSE streaming, and encrypted provider keys.\n"
+                "Try asking: 'What can I do with this knowledge base?'"
             ),
             status=DOCUMENT_STATUS_READY,
             chunks_count=1,
@@ -80,18 +76,18 @@ def seed():
 
         tasks_data = [
             {
-                "title": "了解 RAG 工作原理",
-                "description": "阅读项目文档了解检索增强生成",
+                "title": "Learn how retrieval works",
+                "description": "Read the project documentation to understand retrieval-augmented generation",
                 "status": "completed",
             },
             {
-                "title": "配置 LLM API Key",
-                "description": "在个人设置中配置自己的大模型 API Key",
+                "title": "Configure an LLM API key",
+                "description": "Add a provider key in your personal settings",
                 "status": "pending",
             },
             {
-                "title": "体验 Tool Calling",
-                "description": "向 AI 询问天气或创建任务",
+                "title": "Try a tool call",
+                "description": "Ask the assistant about the weather or create a task",
                 "status": "pending",
             },
         ]

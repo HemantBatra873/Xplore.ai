@@ -17,7 +17,7 @@ from app.utils.errors import AppException
 router = APIRouter()
 
 
-@router.get("/setup/status", response_model=SetupStatus, summary="检查系统初始化状态")
+@router.get("/setup/status", response_model=SetupStatus, summary="Check system setup status")
 async def get_setup_status(db: Session = Depends(get_db)):
     """检测系统是否已完成初始化（是否已有用户）"""
     user_count = db.execute(select(func.count(User.id))).scalar()
@@ -28,7 +28,7 @@ async def get_setup_status(db: Session = Depends(get_db)):
     )
 
 
-@router.post("/setup", response_model=Token, summary="首次初始化：创建管理员并登录")
+@router.post("/setup", response_model=Token, summary="Initial setup: create an administrator and sign in")
 async def initial_setup(
     setup_in: SetupRequest,
     db: Session = Depends(get_db),
@@ -83,7 +83,7 @@ async def initial_setup(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.post("/login", response_model=Token, summary="用户登录并获取 Token")
+@router.post("/login", response_model=Token, summary="Sign in and get a token")
 async def login_access_token(
     db: Session = Depends(get_db),
     # OAuth2PasswordRequestForm 默认接收 x-www-form-urlencoded 格式的数据（即 username 和 password）

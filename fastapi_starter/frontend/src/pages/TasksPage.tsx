@@ -8,10 +8,10 @@ import { IconPlus, IconTrash, IconX } from '@/components/ui/Icons'
 type FilterKey = 'all' | 'pending' | 'in_progress' | 'completed'
 
 const filterLabels: Record<FilterKey, string> = {
-  all: '全部',
-  pending: '待办',
-  in_progress: '进行中',
-  completed: '已完成',
+  all: 'All',
+  pending: 'Pending',
+  in_progress: 'In progress',
+  completed: 'Completed',
 }
 
 export default function TasksPage() {
@@ -71,9 +71,9 @@ export default function TasksPage() {
     <div className="min-h-screen bg-[var(--bg-primary)]">
       <header className="h-14 border-b border-[var(--border-primary)] bg-[var(--bg-secondary)] flex items-center px-6 gap-4">
         <button onClick={() => navigate('/chat')} className="text-sm text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors">
-          ← 返回
+          ← Back
         </button>
-        <h1 className="text-sm font-semibold text-[var(--text-primary)]">任务管理</h1>
+        <h1 className="text-sm font-semibold text-[var(--text-primary)]">Task management</h1>
       </header>
 
       <div className="max-w-3xl mx-auto p-6 space-y-6">
@@ -97,7 +97,7 @@ export default function TasksPage() {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 transition-colors"
           >
             <IconPlus />
-            新建任务
+            New task
           </button>
         </div>
 
@@ -106,20 +106,20 @@ export default function TasksPage() {
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="任务标题"
+              placeholder="Task title"
               required
               className="w-full px-3 py-2 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-primary)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors"
             />
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="描述（可选）"
+              placeholder="Description (optional)"
               rows={3}
               className="w-full px-3 py-2 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-primary)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] resize-none focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors"
             />
             <div className="flex gap-2">
               <button type="submit" disabled={!title.trim() || submitting} className="flex-1 py-2 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 disabled:opacity-50 transition-colors">
-                {submitting ? '创建中...' : '创建'}
+                {submitting ? 'Creating...' : 'Create'}
               </button>
               <button type="button" onClick={() => { setShowForm(false); setTitle(''); setDescription('') }} className="px-3 py-2 rounded-lg border border-[var(--border-primary)] text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
                 <IconX />
@@ -136,10 +136,10 @@ export default function TasksPage() {
           </div>
         ) : filteredTasks.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-sm text-[var(--text-tertiary)]">{filter === 'all' ? '还没有任务' : `没有${filterLabels[filter]}状态的任务`}</p>
+            <p className="text-sm text-[var(--text-tertiary)]">{filter === 'all' ? 'No tasks yet' : `No ${filterLabels[filter].toLowerCase()} tasks`}</p>
             {filter === 'all' && (
               <button onClick={() => setShowForm(true)} className="mt-2 text-xs text-brand-500 hover:text-brand-400 transition-colors">
-                创建第一个任务
+                Create your first task
               </button>
             )}
           </div>
@@ -169,7 +169,7 @@ export default function TasksPage() {
                     <div className="flex items-center gap-2 mt-2 ml-7">
                       <TaskStatusBadge status={task.status} />
                       <span className="text-xs text-[var(--text-tertiary)]">
-                        {new Date(task.created_at).toLocaleString('zh-CN')}
+                        {new Date(task.created_at).toLocaleString('en-US')}
                       </span>
                     </div>
                   </button>

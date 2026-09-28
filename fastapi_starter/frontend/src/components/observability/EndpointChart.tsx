@@ -6,7 +6,7 @@ import type { EndpointLLMStats } from '@/types'
 export default function EndpointChart({ data }: { data: EndpointLLMStats[] }) {
   return (
     <div className="p-4 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)]">
-      <p className="text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wider mb-4">按端点统计</p>
+      <p className="text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wider mb-4">Calls by endpoint</p>
       <div className="h-48">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 4, right: 8, bottom: 4, left: -16 }}>

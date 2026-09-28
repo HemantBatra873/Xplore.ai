@@ -5,14 +5,14 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class TaskBase(BaseModel):
-    title: str = Field(..., description="任务标题", max_length=255)
-    description: Optional[str] = Field(None, description="任务详细描述")
-    status: str = Field("pending", description="任务状态：pending, in_progress, completed")
+    title: str = Field(..., description="Task title", max_length=255)
+    description: Optional[str] = Field(None, description="Task description")
+    status: str = Field("pending", description="Task status: pending, in_progress, completed")
 
 
 class TaskCreate(TaskBase):
     """
-    创建任务时的请求模型
+    Create a task时的请求模型
     """
 
     pass

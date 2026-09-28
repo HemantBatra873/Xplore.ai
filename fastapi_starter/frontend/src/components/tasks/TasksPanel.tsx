@@ -61,7 +61,7 @@ export default function TasksPanel() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wider">
-          任务列表
+          Tasks
         </span>
         <button
           onClick={() => setShowForm(!showForm)}
@@ -76,14 +76,14 @@ export default function TasksPanel() {
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="任务标题"
+            placeholder="Task title"
             required
             className="w-full px-3 py-2 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-tertiary)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors"
           />
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="描述（可选）"
+            placeholder="Description (optional)"
             rows={2}
             className="w-full px-3 py-2 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-tertiary)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] resize-none focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors"
           />
@@ -93,7 +93,7 @@ export default function TasksPanel() {
               disabled={!title.trim() || submitting}
               className="flex-1 py-2 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 disabled:opacity-50 transition-colors"
             >
-              {submitting ? '创建中...' : '创建'}
+              {submitting ? 'Creating...' : 'Create'}
             </button>
             <button
               type="button"
@@ -114,12 +114,12 @@ export default function TasksPanel() {
         </div>
       ) : tasks.length === 0 ? (
         <div className="text-center py-8">
-          <p className="text-sm text-[var(--text-tertiary)]">还没有任务</p>
+          <p className="text-sm text-[var(--text-tertiary)]">No tasks yet</p>
           <button
             onClick={() => setShowForm(true)}
             className="mt-2 text-xs text-brand-500 hover:text-brand-400 transition-colors"
           >
-            创建第一个任务
+            Create your first task
           </button>
         </div>
       ) : (
@@ -155,7 +155,7 @@ function TaskCard({ task, onToggleStatus, onDelete }: { task: Task; onToggleStat
           <div className="flex items-center gap-2 mt-2">
             <TaskStatusBadge status={task.status} />
             <span className="text-xs text-[var(--text-tertiary)]">
-              {new Date(task.created_at).toLocaleDateString('zh-CN')}
+              {new Date(task.created_at).toLocaleDateString('en-US')}
             </span>
           </div>
         </button>

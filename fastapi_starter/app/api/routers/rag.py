@@ -27,7 +27,7 @@ SUPPORTED_EXT_TEXT = ", ".join(SUPPORTED_EXTENSIONS)
     "/upload",
     response_model=DocumentResponse,
     status_code=status.HTTP_202_ACCEPTED,
-    summary="上传文档并异步构建知识库（支持 .txt / .md / .pdf）",
+    summary="Upload a document and build the knowledge base asynchronously (.txt / .md / .pdf)",
     tags=["RAG"],
 )
 async def upload_document(
@@ -36,7 +36,7 @@ async def upload_document(
     current_user=Depends(get_current_active_user),
 ):
     """
-    上传文档（支持 .txt / .md / .pdf），先解析并保存纯文本内容，再异步执行切分和向量化。
+    Upload a document, store extracted text, then process chunking and embeddings asynchronously.
     """
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided.")
@@ -88,7 +88,7 @@ async def upload_document(
 @router.get(
     "/documents",
     response_model=list[DocumentResponse],
-    summary="查看当前用户的知识库文档",
+    summary="List the current user documents",
     tags=["RAG"],
 )
 async def list_documents(
@@ -101,7 +101,7 @@ async def list_documents(
 @router.get(
     "/documents/{document_id}",
     response_model=DocumentResponse,
-    summary="查看文档处理状态",
+    summary="Get document processing status",
     tags=["RAG"],
 )
 async def get_document(
@@ -116,7 +116,7 @@ async def get_document(
 
 @router.delete(
     "/documents/{document_id}",
-    summary="删除指定文档（含已处理的向量块）",
+    summary="Delete a document and its processed chunks",
     tags=["RAG"],
 )
 async def delete_document(
@@ -127,12 +127,12 @@ async def delete_document(
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found.")
     return JSONResponse(
-        content={"message": f"文档 '{document.filename}' 已删除", "document_id": document.id}
+        content={"message": f"Document '{document.filename}' deleted", "document_id": document.id}
     )
 
 
 @router.post(
-    "/query", response_model=RAGQueryResponse, summary="基于知识库检索并回答", tags=["RAG"]
+    "/query", response_model=RAGQueryResponse, summary="Retrieve from the knowledge base and answer", tags=["RAG"]
 )
 async def query_knowledge_base(
     request: RAGQueryRequest,
@@ -159,21 +159,21 @@ async def query_knowledge_base(
         if not chunks:
             return RAGQueryResponse(
                 query=request.query,
-                answer="知识库中暂无已处理完成的相关文档，请先上传文档并等待处理完成。",
+                answer="No processed documents match this query. Upload a document and wait for processing to finish.",
                 source_chunks=[],
             )
 
         # 3. 组装 Prompt
         context_texts = []
         for i, chunk in enumerate(chunks, 1):
-            context_texts.append(f"[相关片段 {i}]:\n{chunk.content}")
+            context_texts.append(f"[Source passage {i}]:\n{chunk.content}")
 
         context_str = "\n\n".join(context_texts)
 
         system_prompt = (
-            "你是一个专业的问答助手。请基于以下提供的参考资料，准确回答用户的问题。\n"
-            "如果你不知道答案，或者参考资料中没有相关信息，请直接说明，不要编造。\n\n"
-            f"=== 参考资料 ===\n{context_str}\n=== 结束 ==="
+            "You are a careful question-answering assistant. Answer using the reference material below.\n"
+            "If the answer is not present, say so directly and do not invent details.\n\n"
+            f"=== Reference material ===\n{context_str}\n=== End reference material ==="
         )
 
         messages = [
@@ -239,7 +239,7 @@ async def query_knowledge_base(
         raise HTTPException(status_code=500, detail=f"RAG query failed: {str(e)}")
 
 
-@router.post("/query/stream", summary="基于知识库检索并流式回答 (SSE)", tags=["RAG"])
+@router.post("/query/stream", summary="Retrieve from the knowledge base and stream an answer (SSE)", tags=["RAG"])
 async def query_knowledge_base_stream(
     request: RAGQueryRequest,
     db: Session = Depends(get_db),
@@ -260,7 +260,7 @@ async def query_knowledge_base_stream(
         async def _empty():
             data = json.dumps(
                 {
-                    "content": "知识库中暂无已处理完成的相关文档，请先上传文档并等待处理完成。",
+                    "content": "No processed documents match this query. Upload a document and wait for processing to finish.",
                     "source_chunks": [],
                 },
                 ensure_ascii=False,
@@ -270,12 +270,12 @@ async def query_knowledge_base_stream(
 
         return StreamingResponse(_empty(), media_type="text/event-stream")
 
-    context_texts = [f"[相关片段 {i}]:\n{chunk.content}" for i, chunk in enumerate(chunks, 1)]
+    context_texts = [f"[Source passage {i}]:\n{chunk.content}" for i, chunk in enumerate(chunks, 1)]
     context_str = "\n\n".join(context_texts)
     system_prompt = (
-        "你是一个专业的问答助手。请基于以下提供的参考资料，准确回答用户的问题。\n"
-        "如果你不知道答案，或者参考资料中没有相关信息，请直接说明，不要编造。\n\n"
-        f"=== 参考资料 ===\n{context_str}\n=== 结束 ==="
+        "You are a careful question-answering assistant. Answer using the reference material below.\n"
+        "If the answer is not present, say so directly and do not invent details.\n\n"
+        f"=== Reference material ===\n{context_str}\n=== End reference material ==="
     )
 
     source_chunk_contents = [c.content for c in chunks]

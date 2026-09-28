@@ -24,7 +24,7 @@ class TaskStatusResponse(BaseModel):
     result: Optional[dict] = None
 
 
-@router.post("/process", response_model=TaskStatusResponse, summary="提交一个处理文档的异步任务")
+@router.post("/process", response_model=TaskStatusResponse, summary="Submit an asynchronous document-processing task")
 async def trigger_document_processing(
     request: DocumentProcessRequest,
     db: Session = Depends(get_db),
@@ -53,12 +53,12 @@ async def trigger_document_processing(
         status=document.status,
         result={
             "document_id": document.id,
-            "message": "文档已重新提交至后台队列，请稍后查询进度。",
+            "message": "Document resubmitted to the background queue. Check its status shortly.",
         },
     )
 
 
-@router.get("/status/{task_id}", response_model=TaskStatusResponse, summary="查询异步任务执行状态")
+@router.get("/status/{task_id}", response_model=TaskStatusResponse, summary="Get asynchronous task status")
 async def get_task_status(
     task_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):

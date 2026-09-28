@@ -18,13 +18,13 @@ export default function LLMCallLogTable({ logs, loading }: Props) {
             <thead>
               <tr className="bg-[var(--bg-secondary)] text-[var(--text-tertiary)] text-xs uppercase tracking-wider">
                 <th className="text-left px-4 py-3 font-medium">#</th>
-                <th className="text-left px-4 py-3 font-medium">时间</th>
-                <th className="text-left px-4 py-3 font-medium">端点</th>
-                <th className="text-left px-4 py-3 font-medium">模型</th>
+                <th className="text-left px-4 py-3 font-medium">Time</th>
+                <th className="text-left px-4 py-3 font-medium">Endpoint</th>
+                <th className="text-left px-4 py-3 font-medium">Model</th>
                 <th className="text-right px-4 py-3 font-medium">Token</th>
-                <th className="text-right px-4 py-3 font-medium">耗时</th>
-                <th className="text-right px-4 py-3 font-medium">成本</th>
-                <th className="text-center px-4 py-3 font-medium">状态</th>
+                <th className="text-right px-4 py-3 font-medium">Latency</th>
+                <th className="text-right px-4 py-3 font-medium">Cost</th>
+                <th className="text-center px-4 py-3 font-medium">Status</th>
                 <th className="text-right px-4 py-3 font-medium"></th>
               </tr>
             </thead>
@@ -40,7 +40,7 @@ export default function LLMCallLogTable({ logs, loading }: Props) {
               ) : logs.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-8 text-center text-sm text-[var(--text-tertiary)]">
-                    暂无 LLM 调用记录
+                    No LLM calls yet
                   </td>
                 </tr>
               ) : (
@@ -52,7 +52,7 @@ export default function LLMCallLogTable({ logs, loading }: Props) {
                   >
                     <td className="px-4 py-3 text-[var(--text-tertiary)] text-xs font-mono">{i + 1}</td>
                     <td className="px-4 py-3 text-[var(--text-secondary)] text-xs font-mono whitespace-nowrap">
-                      {new Date(log.created_at).toLocaleTimeString('zh-CN')}
+                      {new Date(log.created_at).toLocaleTimeString('en-US')}
                     </td>
                     <td className="px-4 py-3 text-[var(--text-primary)] font-mono text-xs">{log.endpoint}</td>
                     <td className="px-4 py-3 text-[var(--text-secondary)] text-xs">{log.model_name}</td>
@@ -64,7 +64,7 @@ export default function LLMCallLogTable({ logs, loading }: Props) {
                         log.status === 'success' ? 'text-[var(--color-success)]' : 'text-[var(--color-error)]'
                       }`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${log.status === 'success' ? 'bg-[var(--color-success)]' : 'bg-[var(--color-error)]'}`} />
-                        {log.status === 'success' ? '成功' : '失败'}
+                        {log.status === 'success' ? 'Success' : 'Failed'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -91,7 +91,7 @@ function CallDetailModal({ log, onClose }: { log: LLMCallLog; onClose: () => voi
       <div className="fixed inset-0 bg-black/40" onClick={onClose} />
       <div className="relative z-10 w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] shadow-xl">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-primary)]">
-          <h3 className="text-sm font-semibold text-[var(--text-primary)]">调用详情 #{log.id}</h3>
+          <h3 className="text-sm font-semibold text-[var(--text-primary)]">Call details #{log.id}</h3>
           <button onClick={onClose} className="p-1 rounded text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors">
             <IconX />
           </button>
@@ -100,14 +100,14 @@ function CallDetailModal({ log, onClose }: { log: LLMCallLog; onClose: () => voi
         <div className="p-5 space-y-4">
           <div className="grid grid-cols-2 gap-4 text-sm">
             {[
-              ['端点', log.endpoint],
-              ['模型', log.model_name],
-              ['供应商', log.provider],
-              ['状态', log.status],
+              ['Endpoint', log.endpoint],
+              ['Model', log.model_name],
+              ['Provider', log.provider],
+              ['Status', log.status],
               ['Token', `${log.prompt_tokens} prompt + ${log.completion_tokens} completion = ${log.total_tokens} total`],
-              ['耗时', `${(log.latency_ms / 1000).toFixed(2)}s`],
-              ['成本', `$${log.estimated_cost_usd.toFixed(6)}`],
-              ['时间', new Date(log.created_at).toLocaleString('zh-CN')],
+              ['Latency', `${(log.latency_ms / 1000).toFixed(2)}s`],
+              ['Cost', `$${log.estimated_cost_usd.toFixed(6)}`],
+              ['Time', new Date(log.created_at).toLocaleString('en-US')],
             ].map(([label, value]) => (
               <div key={label}>
                 <p className="text-xs text-[var(--text-tertiary)] mb-0.5">{label}</p>
@@ -118,7 +118,7 @@ function CallDetailModal({ log, onClose }: { log: LLMCallLog; onClose: () => voi
 
           {log.tool_calls && (
             <div>
-              <p className="text-xs text-[var(--text-tertiary)] mb-1">工具调用</p>
+              <p className="text-xs text-[var(--text-tertiary)] mb-1">Tool calls</p>
               <pre className="text-xs text-[var(--text-secondary)] font-mono bg-[var(--bg-tertiary)] rounded-lg p-3 overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto">
                 {(() => {
                   try { return JSON.stringify(JSON.parse(log.tool_calls), null, 2) }
@@ -131,20 +131,20 @@ function CallDetailModal({ log, onClose }: { log: LLMCallLog; onClose: () => voi
           <div>
             <p className="text-xs text-[var(--text-tertiary)] mb-1">Prompt</p>
             <pre className="text-xs text-[var(--text-secondary)] font-mono bg-[var(--bg-tertiary)] rounded-lg p-3 overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto">
-              {log.prompt || '(空)'}
+              {log.prompt || '(empty)'}
             </pre>
           </div>
 
           <div>
             <p className="text-xs text-[var(--text-tertiary)] mb-1">Response</p>
             <pre className="text-xs text-[var(--text-secondary)] font-mono bg-[var(--bg-tertiary)] rounded-lg p-3 overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto">
-              {log.response || '(空)'}
+              {log.response || '(empty)'}
             </pre>
           </div>
 
           {log.error_message && (
             <div>
-              <p className="text-xs text-[var(--color-error)] mb-1">错误信息</p>
+              <p className="text-xs text-[var(--color-error)] mb-1">Error</p>
               <pre className="text-xs text-[var(--color-error)] font-mono bg-[var(--color-error)]/5 rounded-lg p-3 overflow-x-auto">
                 {log.error_message}
               </pre>

@@ -40,9 +40,9 @@ export default function ObservabilityPage() {
     <div className="min-h-screen bg-[var(--bg-primary)]">
       <header className="h-14 border-b border-[var(--border-primary)] bg-[var(--bg-secondary)] flex items-center px-6 gap-4">
         <button onClick={() => navigate('/chat')} className="text-sm text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors">
-          ← 返回
+          ← Back
         </button>
-        <h1 className="text-sm font-semibold text-[var(--text-primary)]">可观测性面板</h1>
+        <h1 className="text-sm font-semibold text-[var(--text-primary)]">Observability</h1>
         <div className="flex-1" />
         <div className="flex items-center gap-1 bg-[var(--bg-primary)] rounded-lg p-0.5 border border-[var(--border-primary)]">
           {DAY_OPTIONS.map((d) => (
@@ -53,7 +53,7 @@ export default function ObservabilityPage() {
                 days === d ? 'bg-brand-500 text-white' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
               }`}
             >
-              {d}天
+              {d}days
             </button>
           ))}
         </div>
@@ -75,17 +75,17 @@ export default function ObservabilityPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
               <div className="lg:col-span-2">
-                <TrendChart data={stats.daily_stats} dataKey="calls" label={`近 ${days} 天调用趋势`} color="#6366f1" />
+                <TrendChart data={stats.daily_stats} dataKey="calls" label={`Last ${days} dayscall trend`} color="#6366f1" />
               </div>
               <div>
-                <TrendChart data={stats.daily_stats} dataKey="tokens" label="Token 趋势" color="#22c55e" />
+                <TrendChart data={stats.daily_stats} dataKey="tokens" label="Token trend" color="#22c55e" />
               </div>
             </div>
 
             <EndpointChart data={stats.endpoint_stats} />
 
             <section>
-              <h2 className="text-sm font-medium text-[var(--text-primary)] mb-3">LLM 调用日志</h2>
+              <h2 className="text-sm font-medium text-[var(--text-primary)] mb-3">LLM call logs</h2>
               <LLMCallLogTable logs={logs} loading={logsLoading} />
             </section>
           </>

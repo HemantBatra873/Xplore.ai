@@ -8,17 +8,17 @@ class UserBase(BaseModel):
     所有 User 模型共用的基础字段
     """
 
-    username: str = Field(..., min_length=3, max_length=50, description="用户名")
-    email: EmailStr = Field(..., description="邮箱地址")
-    full_name: Optional[str] = Field(None, description="全名（可选）")
+    username: str = Field(..., min_length=3, max_length=50, description="Username")
+    email: EmailStr = Field(..., description="Email address")
+    full_name: Optional[str] = Field(None, description="Full name (optional)")
 
 
 class UserCreate(UserBase):
     """
-    创建用户时所需的字段（请求模型）
+    Create a user时所需的字段（请求模型）
     """
 
-    password: str = Field(..., min_length=6, description="密码")
+    password: str = Field(..., min_length=6, description="Password")
 
 
 class UserOut(UserBase):
@@ -44,12 +44,12 @@ class UserLLMConfigUpdate(BaseModel):
     用户更新自定义 LLM 配置
     """
 
-    llm_provider: Optional[str] = Field(None, description="LLM 服务商")
+    llm_provider: Optional[str] = Field(None, description="LLM provider")
     llm_base_url: Optional[str] = Field(None, description="LLM Base URL")
-    llm_model_name: Optional[str] = Field(None, description="LLM 模型名称")
-    llm_api_key: Optional[str] = Field(None, description="LLM API Key (明文，入库时会被加密)")
+    llm_model_name: Optional[str] = Field(None, description="LLM model name")
+    llm_api_key: Optional[str] = Field(None, description="LLM API key; encrypted before storage")
 
 
 class PasswordUpdate(BaseModel):
-    old_password: str = Field(..., min_length=6, description="旧密码")
-    new_password: str = Field(..., min_length=6, description="新密码")
+    old_password: str = Field(..., min_length=6, description="Current password")
+    new_password: str = Field(..., min_length=6, description="New password")

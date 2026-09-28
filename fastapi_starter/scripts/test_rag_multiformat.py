@@ -18,7 +18,7 @@ headers = {"Authorization": f"Bearer {token}"}
 print("2. Login: OK")
 
 # Upload .txt
-with open("sample_knowledge.txt", "rb") as f:
+with open("README.md", "rb") as f:
     r = requests.post(
         f"{BASE}/api/v1/rag/upload",
         headers=headers,
@@ -29,7 +29,7 @@ print(
 )
 
 # Upload .md
-with open("sample_knowledge.md", "rb") as f:
+with open("docs/CODE_WIKI.md", "rb") as f:
     r = requests.post(
         f"{BASE}/api/v1/rag/upload",
         headers=headers,
@@ -40,7 +40,7 @@ print(
 )
 
 # Upload .pdf
-with open("sample_knowledge.pdf", "rb") as f:
+with open("README.md", "rb") as f:
     r = requests.post(
         f"{BASE}/api/v1/rag/upload",
         headers=headers,

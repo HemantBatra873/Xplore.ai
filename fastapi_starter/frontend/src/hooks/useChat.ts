@@ -32,7 +32,7 @@ export function useChat() {
     setIsStreaming(true)
 
     try {
-      // 优先使用非流式请求（支持 Tool Calling），失败后回退到流式
+      // Prefer non-streaming requests for tool calling, then fall back to streaming.
       try {
         const reply = await sendChatMessage(content.trim())
         if (reply) {
@@ -47,10 +47,10 @@ export function useChat() {
           return
         }
       } catch {
-        // 非流式请求失败，回退到流式
+        // The non-streaming request failed; fall back to streaming.
       }
 
-      // 流式回退
+      // Streaming fallback.
       const generator = streamChatMessage(content.trim())
       let fullContent = ''
       let reasoningContent = ''
@@ -63,7 +63,7 @@ export function useChat() {
             const updated = [...prev]
             const last = updated[updated.length - 1]
             if (last?.id === assistantMessage.id) {
-              updated[updated.length - 1] = { ...last, content: `错误：${chunk.error}` }
+              updated[updated.length - 1] = { ...last, content: `Error: ${chunk.error}` }
             }
             return updated
           })
@@ -99,7 +99,7 @@ export function useChat() {
           if (last?.id === assistantMessage.id && !last.content) {
             updated[updated.length - 1] = {
               ...last,
-              content: '请求失败，请重试',
+              content: 'Request failed. Please try again.',
             }
           }
           return updated

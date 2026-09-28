@@ -113,7 +113,7 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "increase(http_requests_total{job=\"fastapi-starter-api\"}[1m])",
+          "expr": "increase(http_requests_total{job=\"xplore-ai-api\"}[1m])",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -473,7 +473,7 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "http_request_duration_seconds_sum{job=\"fastapi-starter-api\",handler!=\"none\"} / http_request_duration_seconds_count",
+          "expr": "http_request_duration_seconds_sum{job=\"xplore-ai-api\",handler!=\"none\"} / http_request_duration_seconds_count",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -682,7 +682,7 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "process_resident_memory_bytes{job=\"fastapi-starter-api\"}",
+          "expr": "process_resident_memory_bytes{job=\"xplore-ai-api\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -785,7 +785,7 @@
             "uid": "Prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(process_cpu_seconds_total{job=\"fastapi-starter-api\"}[30s])",
+          "expr": "rate(process_cpu_seconds_total{job=\"xplore-ai-api\"}[30s])",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,

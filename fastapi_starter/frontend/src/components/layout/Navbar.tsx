@@ -37,10 +37,10 @@ export default function Navbar({ onToggleSidebar }: { onToggleSidebar: () => voi
 
       <div className="flex items-center gap-2">
         <div className="w-7 h-7 rounded-lg bg-brand-500 flex items-center justify-center">
-          <span className="text-white text-xs font-bold">A</span>
+          <span className="text-white text-xs font-bold">X</span>
         </div>
         <span className="text-sm font-semibold text-[var(--text-primary)] hidden sm:block">
-          Agent
+          Xplore.ai
         </span>
       </div>
 
@@ -49,7 +49,7 @@ export default function Navbar({ onToggleSidebar }: { onToggleSidebar: () => voi
           <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" />
           <input
             type="text"
-            placeholder="搜索知识库..."
+            placeholder="Search your knowledge base..."
             className="w-full h-9 pl-9 pr-3 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors"
           />
         </div>
@@ -72,7 +72,7 @@ export default function Navbar({ onToggleSidebar }: { onToggleSidebar: () => voi
               <IconUser className="text-brand-500" />
             </div>
             <span className="text-sm text-[var(--text-primary)] hidden sm:block max-w-[120px] truncate">
-              {user?.username || '用户'}
+              {user?.username || 'User'}
             </span>
           </button>
 
@@ -80,7 +80,7 @@ export default function Navbar({ onToggleSidebar }: { onToggleSidebar: () => voi
             <div className="absolute right-0 top-full mt-1 w-48 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] shadow-lg py-1 z-50">
               <div className="px-3 py-2 border-b border-[var(--border-primary)]">
                 <p className="text-sm font-medium text-[var(--text-primary)] truncate">
-                  {user?.username || '用户'}
+                  {user?.username || 'User'}
                 </p>
                 <p className="text-xs text-[var(--text-tertiary)] truncate">
                   {user?.email || ''}
@@ -91,14 +91,14 @@ export default function Navbar({ onToggleSidebar }: { onToggleSidebar: () => voi
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors"
               >
                 <IconSettings />
-                设置
+                Settings
               </button>
               <button
                 onClick={handleLogout}
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--color-error)] hover:bg-[var(--bg-tertiary)] transition-colors"
               >
                 <IconLogout />
-                退出登录
+                Sign out
               </button>
             </div>
           )}

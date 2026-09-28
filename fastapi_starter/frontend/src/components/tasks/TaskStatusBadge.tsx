@@ -9,9 +9,9 @@ const styles: Record<string, string> = {
 }
 
 const labels: Record<string, string> = {
-  pending: '待办',
-  in_progress: '进行中',
-  completed: '已完成',
+  pending: 'Pending',
+  in_progress: 'In progress',
+  completed: 'Completed',
 }
 
 export default function TaskStatusBadge({ status }: Props) {

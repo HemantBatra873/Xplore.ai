@@ -53,9 +53,9 @@ export default function SetupPage() {
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
         const axiosErr = err as { response?: { data?: { detail?: string } } }
-        setError(axiosErr.response?.data?.detail || '初始化失败，请重试')
+        setError(axiosErr.response?.data?.detail || 'Setup failed. Please try again.')
       } else {
-        setError('连接服务器失败')
+        setError('Unable to connect to the server')
       }
     } finally {
       setSaving(false)
@@ -84,18 +84,18 @@ export default function SetupPage() {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">
-            欢迎使用 FastAPI Starter
+            Welcome to Xplore.ai
           </h1>
           <p className="text-sm text-[var(--text-tertiary)] mt-1">
-            创建管理员账号，开始使用
+            Create an administrator account to get started
           </p>
         </div>
 
         <div className="rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-6">
           <form onSubmit={handleSetup} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">用户名</label>
-              <input
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Username</label>
+                <input
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="admin"
@@ -105,8 +105,8 @@ export default function SetupPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">邮箱</label>
-              <input
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Email</label>
+                <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -117,12 +117,12 @@ export default function SetupPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">密码</label>
-              <input
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Password</label>
+                <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="至少 6 位"
+                placeholder="At least 6 characters"
                 required
                 minLength={6}
                 className="w-full px-3 py-2 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors"
@@ -133,7 +133,7 @@ export default function SetupPage() {
 
             <div>
               <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                LLM API Key <span className="text-[var(--text-tertiary)] font-normal">(可选，留空使用 Mock 模式)</span>
+                  LLM API key <span className="text-[var(--text-tertiary)] font-normal">(optional; leave blank for mock mode)</span>
               </label>
               <input
                 type="password"
@@ -143,9 +143,9 @@ export default function SetupPage() {
                 className="w-full px-3 py-2 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors"
               />
               <p className="mt-1 text-xs text-[var(--text-tertiary)]">
-                {status?.llm_mock
-                  ? '当前为 Mock 模式，填入 API Key 后将切换为真实 LLM 调用'
-                  : `当前使用 ${status?.llm_provider} 全局配置`}
+                  {status?.llm_mock
+                    ? 'Mock mode is active. Add an API key to use a live provider.'
+                    : `Using the ${status?.llm_provider} global configuration`}
               </p>
             </div>
 
@@ -160,13 +160,13 @@ export default function SetupPage() {
               disabled={saving}
               className="w-full py-2.5 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {saving ? '初始化中...' : '完成设置，开始使用'}
+                {saving ? 'Setting up...' : 'Finish setup'}
             </button>
           </form>
         </div>
 
-        <p className="text-center mt-6 text-xs text-[var(--text-tertiary)]">
-          FastAPI Starter — 开箱即用的 AI Agent 全栈模板
+          <p className="text-center mt-6 text-xs text-[var(--text-tertiary)]">
+            Xplore.ai — an AI workspace foundation
         </p>
       </div>
     </div>

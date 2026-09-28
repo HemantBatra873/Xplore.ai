@@ -28,7 +28,7 @@ api.interceptors.request.use((config) => {
     }
     return config
   }
-  const token = localStorage.getItem('agent_token')
+  const token = localStorage.getItem('xplore_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -41,8 +41,8 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       const path = window.location.pathname
       if (path !== '/auth/login' && path !== '/auth/register') {
-        localStorage.removeItem('agent_token')
-        localStorage.removeItem('agent_user')
+        localStorage.removeItem('xplore_token')
+        localStorage.removeItem('xplore_user')
         window.location.href = '/auth/login'
       }
     }

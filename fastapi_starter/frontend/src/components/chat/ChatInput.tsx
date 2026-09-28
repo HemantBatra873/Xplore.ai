@@ -50,7 +50,7 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
               }}
               onKeyDown={handleKeyDown}
               rows={1}
-              placeholder="输入消息，按 Enter 发送..."
+              placeholder="Type a message and press Enter..."
               disabled={disabled}
               className="w-full max-h-32 resize-none rounded-xl border border-[var(--border-primary)] bg-[var(--bg-primary)] px-4 py-3 pr-12 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-colors disabled:opacity-50"
             />
@@ -64,7 +64,7 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
           </button>
         </div>
         <p className="text-xs text-[var(--text-tertiary)] mt-2 text-center">
-          Shift+Enter 换行 · AI 回复可能有误，请注意甄别
+          Shift+Enter for a new line. AI responses may be inaccurate.
         </p>
       </div>
     </form>

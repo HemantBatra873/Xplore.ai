@@ -21,17 +21,17 @@ const mockUser: User = {
 }
 
 const mockDocuments: Document[] = [
-  { id: 1, filename: '快速上手指南.md', file_type: 'md', status: 'ready', chunks_count: 5, processing_task_id: null, error_message: null, created_at: daysAgo(2) },
-  { id: 2, filename: '产品需求文档.pdf', file_type: 'pdf', status: 'ready', chunks_count: 12, processing_task_id: null, error_message: null, created_at: daysAgo(1) },
-  { id: 3, filename: 'API 参考.txt', file_type: 'txt', status: 'processing', chunks_count: 0, processing_task_id: 'task-abc', error_message: null, created_at: NOW },
-  { id: 4, filename: '设计规范.md', file_type: 'md', status: 'failed', chunks_count: 0, processing_task_id: null, error_message: '向量化失败：维度不匹配', created_at: daysAgo(3) },
+  { id: 1, filename: 'Getting Started.md', file_type: 'md', status: 'ready', chunks_count: 5, processing_task_id: null, error_message: null, created_at: daysAgo(2) },
+  { id: 2, filename: 'Product Notes.pdf', file_type: 'pdf', status: 'ready', chunks_count: 12, processing_task_id: null, error_message: null, created_at: daysAgo(1) },
+  { id: 3, filename: 'API Reference.txt', file_type: 'txt', status: 'processing', chunks_count: 0, processing_task_id: 'task-abc', error_message: null, created_at: NOW },
+  { id: 4, filename: 'Design Notes.md', file_type: 'md', status: 'failed', chunks_count: 0, processing_task_id: null, error_message: 'Embedding failed: dimension mismatch', created_at: daysAgo(3) },
 ]
 
 const mockTasks: Task[] = [
-  { id: 1, title: '完成前端登录页开发', description: '实现邮箱+密码登录表单，含表单校验和错误提示', status: 'completed', created_at: daysAgo(5), updated_at: daysAgo(2) },
-  { id: 2, title: '对接 SSE 流式接口', description: '实现 fetch + ReadableStream 解析，支持打字机效果', status: 'in_progress', created_at: daysAgo(3), updated_at: daysAgo(1) },
-  { id: 3, title: '搭建可观测性面板', description: '集成 Recharts 图表，展示 LLM 调用统计', status: 'in_progress', created_at: daysAgo(1), updated_at: NOW },
-  { id: 4, title: '编写单元测试', description: '', status: 'pending', created_at: NOW, updated_at: NOW },
+  { id: 1, title: 'Finish the sign-in page', description: 'Implement the email and password form with validation', status: 'completed', created_at: daysAgo(5), updated_at: daysAgo(2) },
+  { id: 2, title: 'Connect the SSE stream', description: 'Parse the stream with fetch and ReadableStream', status: 'in_progress', created_at: daysAgo(3), updated_at: daysAgo(1) },
+  { id: 3, title: 'Build the observability view', description: 'Use Recharts to display LLM call statistics', status: 'in_progress', created_at: daysAgo(1), updated_at: NOW },
+  { id: 4, title: 'Write unit tests', description: '', status: 'pending', created_at: NOW, updated_at: NOW },
 ]
 
 function generateDailyStats(days: number) {
@@ -73,9 +73,9 @@ const mockCallLogs: LLMCallLog[] = Array.from({ length: 20 }).map((_, i) => ({
   model_name: 'gpt-4o-mini',
   provider: 'openai',
   request_id: `req_${Math.random().toString(36).slice(2, 10)}`,
-  prompt: `这是第 ${i + 1} 条模拟调用中的用户提问内容，用于前端展示。`,
-  response: i % 5 === 0 ? null : `这是第 ${i + 1} 条模拟调用的 AI 回复内容。包含了详细的回答信息。`,
-  tool_calls: i === 0 ? JSON.stringify([{ id: 'call_1', type: 'function', function: { name: 'get_current_weather', arguments: '{"location":"北京"}' } }]) : null,
+  prompt: `This is mock prompt ${i + 1}, provided for frontend display.`,
+  response: i % 5 === 0 ? null : `This is mock response ${i + 1}, with a representative answer.`,
+  tool_calls: i === 0 ? JSON.stringify([{ id: 'call_1', type: 'function', function: { name: 'get_current_weather', arguments: '{"location":"Beijing"}' } }]) : null,
   prompt_tokens: Math.floor(Math.random() * 200) + 30,
   completion_tokens: Math.floor(Math.random() * 400) + 50,
   total_tokens: 0,
@@ -107,8 +107,8 @@ const MOCK_RESPONSES: MockEntry[] = [
   { method: 'POST', path: '/users/', handler: () => mockUser },
   { method: 'GET', path: '/users/me', handler: () => mockUser },
   { method: 'PUT', path: '/users/me/llm-config', handler: (data) => ({ ...mockUser, has_custom_llm_key: !!(data as Record<string, unknown>)?.api_key }) },
-  { method: 'PUT', path: '/users/me/password', handler: () => ({ message: '密码修改成功' }) },
-  { method: 'GET', path: '/chat/', handler: () => ({ reply: '这是 Mock 模式下的回复，用于前端独立开发调试。你可以继续体验对话流程。' }) },
+  { method: 'PUT', path: '/users/me/password', handler: () => ({ message: 'Password changed successfully' }) },
+  { method: 'GET', path: '/chat/', handler: () => ({ reply: 'This is an offline mock response for frontend development.' }) },
   { method: 'GET', path: '/tasks/', handler: () => mockTasks },
   { method: 'POST', path: '/tasks/', handler: (data) => {
     const d = data as { title: string; description?: string }
@@ -116,14 +116,14 @@ const MOCK_RESPONSES: MockEntry[] = [
     return task
   }},
   { method: 'PUT', path: '/tasks/', handler: (data) => data },
-  { method: 'DELETE', path: '/tasks/', handler: () => ({ message: '已删除' }) },
+  { method: 'DELETE', path: '/tasks/', handler: () => ({ message: 'Deleted' }) },
   { method: 'GET', path: '/rag/documents', handler: () => mockDocuments },
-  { method: 'POST', path: '/rag/upload', handler: () => ({ ...mockDocuments[0], id: Date.now(), filename: '新建文档.md', status: 'queued', chunks_count: 0 }) },
-  { method: 'DELETE', path: '/rag/documents/', handler: () => ({ message: '文档已删除' }) },
+  { method: 'POST', path: '/rag/upload', handler: () => ({ ...mockDocuments[0], id: Date.now(), filename: 'New Document.md', status: 'queued', chunks_count: 0 }) },
+  { method: 'DELETE', path: '/rag/documents/', handler: () => ({ message: 'Document deleted' }) },
   { method: 'POST', path: '/rag/query', handler: () => ({
     query: 'mock query',
-    answer: '这是 Mock 模式下知识库问答的模拟回答。在实际运行中，后端会基于 pgvector 检索相关文档块并调用 LLM 生成回答。',
-    source_chunks: ['FastAPI 是一个现代、快速（高性能）的 Web 框架，用于构建 API。', '本项目使用 SQLAlchemy 作为 ORM，支持 PostgreSQL 数据库。', 'RAG 功能通过 pgvector 扩展实现向量相似度搜索。'],
+    answer: 'This is an offline mock answer. In production, the backend retrieves relevant chunks with pgvector and asks the LLM to answer.',
+    source_chunks: ['Xplore.ai uses FastAPI to build the API.', 'SQLAlchemy provides the PostgreSQL ORM layer.', 'RAG uses pgvector for vector similarity search.'],
   })},
   { method: 'GET', path: '/observability/llm-stats', handler: () => mockStats },
   { method: 'GET', path: '/observability/llm-calls', handler: () => mockCallLogs },

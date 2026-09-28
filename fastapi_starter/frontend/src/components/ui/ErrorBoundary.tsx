@@ -36,16 +36,16 @@ export class ErrorBoundary extends Component<Props, State> {
               </svg>
             </div>
             <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-1">
-              页面出错了
+              Something went wrong
             </h2>
             <p className="text-sm text-[var(--text-tertiary)] mb-4">
-              {this.state.error?.message || '发生了意外错误'}
+              {this.state.error?.message || 'An unexpected error occurred'}
             </p>
             <button
               onClick={() => window.location.reload()}
               className="px-4 py-2 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 transition-colors"
             >
-              刷新页面
+              Refresh page
             </button>
           </div>
         </div>

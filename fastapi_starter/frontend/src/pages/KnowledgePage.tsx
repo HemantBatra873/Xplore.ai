@@ -20,7 +20,7 @@ export default function KnowledgePage() {
       const data = await listDocuments()
       setDocs(data)
     } catch {
-      setError('加载文档失败')
+      setError('Failed to load documents')
     } finally {
       setLoading(false)
     }
@@ -37,7 +37,7 @@ export default function KnowledgePage() {
       await uploadDocument(file)
       await loadDocs()
     } catch {
-      setError('上传失败，请重试')
+      setError('Upload failed. Please try again.')
     }
     if (fileRef.current) fileRef.current.value = ''
     setUploading(false)
@@ -49,7 +49,7 @@ export default function KnowledgePage() {
       await deleteDocument(id)
       await loadDocs()
     } catch {
-      setError('删除失败，请重试')
+      setError('Delete failed. Please try again.')
     }
   }
 
@@ -57,9 +57,9 @@ export default function KnowledgePage() {
     <div className="min-h-screen bg-[var(--bg-primary)]">
       <header className="h-14 border-b border-[var(--border-primary)] bg-[var(--bg-secondary)] flex items-center px-6 gap-4">
         <button onClick={() => navigate('/chat')} className="text-sm text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors">
-          ← 返回
+          ← Back
         </button>
-        <h1 className="text-sm font-semibold text-[var(--text-primary)]">知识库管理</h1>
+        <h1 className="text-sm font-semibold text-[var(--text-primary)]">Knowledge base</h1>
       </header>
 
       <div className="max-w-4xl mx-auto p-6 space-y-6">
@@ -67,18 +67,18 @@ export default function KnowledgePage() {
           <input ref={fileRef} type="file" accept=".txt,.md,.pdf" onChange={handleUpload} className="hidden" />
           <button onClick={() => fileRef.current?.click()} disabled={uploading} className="disabled:opacity-50">
             <IconUpload className="mx-auto mb-3 text-[var(--text-tertiary)]" />
-            <p className="text-sm text-[var(--text-tertiary)]">{uploading ? '上传中...' : '拖拽或点击上传文档'}</p>
-            <p className="text-xs text-[var(--text-tertiary)] mt-1">支持 .txt .md .pdf 格式</p>
+            <p className="text-sm text-[var(--text-tertiary)]">{uploading ? 'Uploading...' : 'Drag or click to upload a document'}</p>
+            <p className="text-xs text-[var(--text-tertiary)] mt-1">TXT, Markdown, and PDF files are supported</p>
           </button>
         </div>
 
         {error && <p className="text-sm text-[var(--color-error)] bg-[var(--color-error)]/10 rounded-lg px-3 py-2">{error}</p>}
 
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium text-[var(--text-primary)]">文档列表 ({docs.length})</h2>
+          <h2 className="text-sm font-medium text-[var(--text-primary)]">Documents ({docs.length})</h2>
           <div className="flex items-center gap-2">
             <button onClick={() => setViewMode(viewMode === 'card' ? 'table' : 'card')} className="text-xs text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors">
-              {viewMode === 'card' ? '表格视图' : '卡片视图'}
+              {viewMode === 'card' ? 'Table view' : 'Card view'}
             </button>
             <button onClick={loadDocs} className="p-1.5 rounded text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors">
               <IconRefresh />
@@ -95,20 +95,20 @@ export default function KnowledgePage() {
         ) : docs.length === 0 ? (
           <div className="text-center py-16">
             <IconFile className="mx-auto mb-3 text-[var(--text-tertiary)]" />
-            <p className="text-sm text-[var(--text-tertiary)]">暂无文档</p>
-            <p className="text-xs text-[var(--text-tertiary)] mt-1">上传文档以开始构建知识库</p>
+            <p className="text-sm text-[var(--text-tertiary)]">No documents yet</p>
+            <p className="text-xs text-[var(--text-tertiary)] mt-1">Upload a document to build your knowledge base</p>
           </div>
         ) : viewMode === 'table' ? (
           <div className="rounded-xl border border-[var(--border-primary)] overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-[var(--bg-secondary)] text-[var(--text-tertiary)] text-xs uppercase tracking-wider">
-                  <th className="text-left px-4 py-3 font-medium">文件名</th>
-                  <th className="text-left px-4 py-3 font-medium">类型</th>
-                  <th className="text-left px-4 py-3 font-medium">状态</th>
+                  <th className="text-left px-4 py-3 font-medium">Filename</th>
+                  <th className="text-left px-4 py-3 font-medium">Type</th>
+                  <th className="text-left px-4 py-3 font-medium">Status</th>
                   <th className="text-left px-4 py-3 font-medium">Chunks</th>
-                  <th className="text-left px-4 py-3 font-medium">上传时间</th>
-                  <th className="text-right px-4 py-3 font-medium">操作</th>
+                  <th className="text-left px-4 py-3 font-medium">Uploaded</th>
+                  <th className="text-right px-4 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border-secondary)]">
@@ -124,7 +124,7 @@ export default function KnowledgePage() {
                     </td>
                     <td className="px-4 py-3 text-[var(--text-secondary)]">{doc.chunks_count}</td>
                     <td className="px-4 py-3 text-[var(--text-tertiary)] text-xs">
-                      {new Date(doc.created_at).toLocaleString('zh-CN')}
+                      {new Date(doc.created_at).toLocaleString('en-US')}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button onClick={() => handleDelete(doc.id)} className="p-1.5 rounded text-[var(--text-tertiary)] hover:text-[var(--color-error)] transition-colors">
@@ -160,7 +160,7 @@ export default function KnowledgePage() {
                     {statusLabels[doc.status] || doc.status}
                   </span>
                   {doc.status === 'ready' && <span>{doc.chunks_count} chunks</span>}
-                  <span>{new Date(doc.created_at).toLocaleDateString('zh-CN')}</span>
+                  <span>{new Date(doc.created_at).toLocaleDateString('en-US')}</span>
                 </div>
               </div>
             ))}

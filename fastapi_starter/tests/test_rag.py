@@ -209,7 +209,7 @@ def test_upload_pdf_document(client, monkeypatch, db_session):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Helvetica", size=12)
-    pdf.cell(200, 10, text="Project Orion RAG Test", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(200, 10, text="Xplore.ai RAG test", new_x="LMARGIN", new_y="NEXT")
     pdf.output(buf)
     pdf_bytes = buf.getvalue()
 
@@ -234,7 +234,7 @@ def test_upload_pdf_document(client, monkeypatch, db_session):
 
     document = db_session.get(Document, payload["id"])
     assert document.file_type == "pdf"
-    assert "Project Orion" in document.content
+    assert "Xplore.ai" in document.content
 
 
 def test_upload_unsupported_format(client):

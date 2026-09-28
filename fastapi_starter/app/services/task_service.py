@@ -27,7 +27,7 @@ class TaskService:
     @staticmethod
     def list_tasks(db: Session, owner_id: int, skip: int = 0, limit: int = 100):
         """
-        获取当前用户的所有任务列表
+        List the current user tasks列表
         """
         return (
             db.execute(
@@ -59,7 +59,7 @@ class TaskService:
     @staticmethod
     def update_task(db: Session, task_id: int, owner_id: int, task_in: TaskUpdate) -> Task:
         """
-        更新任务信息
+        Update task
         """
         task = TaskService.get_task(db, task_id, owner_id)
 

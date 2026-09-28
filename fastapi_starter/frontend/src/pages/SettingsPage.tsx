@@ -6,11 +6,11 @@ import type { HealthStatus } from '@/types'
 import api from '@/services/api'
 
 const PROVIDERS = [
-  { value: '', label: '使用全局配置' },
+  { value: '', label: 'Use global configuration' },
   { value: 'openai', label: 'OpenAI' },
   { value: 'deepseek', label: 'DeepSeek' },
   { value: 'ollama', label: 'Ollama' },
-  { value: 'custom', label: '自定义' },
+  { value: 'custom', label: 'Custom' },
 ]
 
 export default function SettingsPage() {
@@ -58,9 +58,9 @@ export default function SettingsPage() {
       })
       setUser(updated)
       setApiKey('')
-      setLlmMessage('LLM 配置已保存')
+      setLlmMessage('LLM configuration saved')
     } catch {
-      setLlmMessage('保存失败，请重试')
+      setLlmMessage('Save failed. Please try again.')
     } finally {
       setLlmSaving(false)
     }
@@ -81,9 +81,9 @@ export default function SettingsPage() {
       setBaseUrl('')
       setModelName('')
       setApiKey('')
-      setLlmMessage('个人 LLM 配置已清除，将使用全局配置')
+      setLlmMessage('Personal LLM configuration cleared. Using the global configuration')
     } catch {
-      setLlmMessage('清除失败，请重试')
+      setLlmMessage('Clear failed. Please try again.')
     } finally {
       setLlmSaving(false)
     }
@@ -93,11 +93,11 @@ export default function SettingsPage() {
     e.preventDefault()
     setPwMessage('')
     if (newPassword !== confirmPassword) {
-      setPwMessage('两次输入的新密码不一致')
+      setPwMessage('The new passwords do not match')
       return
     }
     if (newPassword.length < 6) {
-      setPwMessage('新密码至少 6 位')
+      setPwMessage('New password must be at least 6 characters')
       return
     }
     setPwSaving(true)
@@ -106,9 +106,9 @@ export default function SettingsPage() {
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
-      setPwMessage('密码修改成功')
+      setPwMessage('Password changed successfully')
     } catch {
-      setPwMessage('修改失败，请检查旧密码是否正确')
+      setPwMessage('Update failed. Check the current password.')
     } finally {
       setPwSaving(false)
     }
@@ -118,14 +118,14 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-[var(--bg-primary)]">
       <header className="h-14 border-b border-[var(--border-primary)] bg-[var(--bg-secondary)] flex items-center px-6 gap-4">
         <button onClick={() => navigate('/chat')} className="text-sm text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors">
-          ← 返回
+          ← Back
         </button>
-        <h1 className="text-sm font-semibold text-[var(--text-primary)]">用户设置</h1>
+        <h1 className="text-sm font-semibold text-[var(--text-primary)]">Settings</h1>
       </header>
 
       <div className="max-w-xl mx-auto p-6 space-y-8">
         <section>
-          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3">系统状态</h2>
+          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3">System status</h2>
           <div className="grid grid-cols-3 gap-3">
             <StatusCard label="Database" status={health?.dependencies.database.status} />
             <StatusCard label="Redis" status={health?.dependencies.redis.status} />
@@ -133,7 +133,7 @@ export default function SettingsPage() {
           </div>
           {health?.dependencies.ollama.status !== 'up' && (
             <p className="mt-2 text-xs text-[var(--text-tertiary)]">
-              Ollama 未运行 — RAG 文档向量化不可用。运行 <code className="px-1 py-0.5 rounded bg-[var(--bg-tertiary)] font-mono">make up-full</code> 启动完整服务。
+              Ollama is not running, so RAG document embedding is unavailable. Run <code className="px-1 py-0.5 rounded bg-[var(--bg-tertiary)] font-mono">make up-full</code> to start the full stack.
             </p>
           )}
         </section>
@@ -141,14 +141,14 @@ export default function SettingsPage() {
         <hr className="border-[var(--border-primary)]" />
 
         <section>
-          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-1">LLM 配置</h2>
+          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-1">LLM configuration</h2>
           <p className="text-xs text-[var(--text-tertiary)] mb-4">
-            配置个人 LLM Key 后，系统将优先使用你的配置，不再使用全局 Key
+            When configured, your personal LLM key takes precedence over the global key.
           </p>
 
           <form onSubmit={handleLLMConfig} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">服务商</label>
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Provider</label>
               <select
                 value={provider}
                 onChange={(e) => setProvider(e.target.value)}
@@ -171,7 +171,7 @@ export default function SettingsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">模型名称</label>
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Model name</label>
               <input
                 value={modelName}
                 onChange={(e) => setModelName(e.target.value)}
@@ -182,7 +182,7 @@ export default function SettingsPage() {
 
             <div>
               <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                API Key {user?.has_custom_llm_key ? <span className="text-[var(--color-success)]">(已配置)</span> : <span className="text-[var(--text-tertiary)]">(未配置)</span>}
+                API key {user?.has_custom_llm_key ? <span className="text-[var(--color-success)]">(configured)</span> : <span className="text-[var(--text-tertiary)]">(not configured)</span>}
               </label>
               <input
                 type="password"
@@ -194,18 +194,18 @@ export default function SettingsPage() {
             </div>
 
             {llmMessage && (
-              <p className={`text-sm ${llmMessage.includes('成功') ? 'text-[var(--color-success)]' : 'text-[var(--color-error)]'}`}>
+              <p className={`text-sm ${llmMessage.includes('Success') ? 'text-[var(--color-success)]' : 'text-[var(--color-error)]'}`}>
                 {llmMessage}
               </p>
             )}
 
             <div className="flex items-center gap-3">
               <button type="submit" disabled={llmSaving} className="px-4 py-2 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 disabled:opacity-50 transition-colors">
-                {llmSaving ? '保存中...' : '保存配置'}
+                {llmSaving ? 'Saving...' : 'Save configuration'}
               </button>
               {user?.has_custom_llm_key && (
                 <button type="button" disabled={llmSaving} onClick={handleClearLLMConfig} className="px-4 py-2 rounded-lg border border-[var(--border-primary)] text-[var(--text-secondary)] text-sm font-medium hover:text-[var(--color-error)] hover:border-[var(--color-error)] disabled:opacity-50 transition-colors">
-                  清除个人配置
+                  Clear personal configuration
                 </button>
               )}
             </div>
@@ -215,11 +215,11 @@ export default function SettingsPage() {
         <hr className="border-[var(--border-primary)]" />
 
         <section>
-          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-4">修改密码</h2>
+          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Change password</h2>
 
           <form onSubmit={handlePassword} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">旧密码</label>
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Current password</label>
               <input
                 type="password"
                 value={currentPassword}
@@ -230,7 +230,7 @@ export default function SettingsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">新密码</label>
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">New password</label>
               <input
                 type="password"
                 value={newPassword}
@@ -242,7 +242,7 @@ export default function SettingsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">确认新密码</label>
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Confirm new password</label>
               <input
                 type="password"
                 value={confirmPassword}
@@ -253,13 +253,13 @@ export default function SettingsPage() {
             </div>
 
             {pwMessage && (
-              <p className={`text-sm ${pwMessage.includes('成功') ? 'text-[var(--color-success)]' : 'text-[var(--color-error)]'}`}>
+              <p className={`text-sm ${pwMessage.includes('Success') ? 'text-[var(--color-success)]' : 'text-[var(--color-error)]'}`}>
                 {pwMessage}
               </p>
             )}
 
             <button type="submit" disabled={pwSaving} className="px-4 py-2 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 disabled:opacity-50 transition-colors">
-              {pwSaving ? '修改中...' : '修改密码'}
+              {pwSaving ? 'Updating...' : 'Change password'}
             </button>
           </form>
         </section>

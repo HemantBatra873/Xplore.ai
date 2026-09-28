@@ -43,7 +43,7 @@ def _get_embedding_client() -> AsyncOpenAI:
 def get_reranker():
     global _reranker
     if CrossEncoder is not None and _reranker is None:
-        logger.info("==> 正在加载 BGE-Reranker 模型，这可能需要一点时间...")
+        logger.info("==> Loading the BGE reranker model; this may take a moment...")
         _reranker = CrossEncoder("BAAI/bge-reranker-base", max_length=512)
     return _reranker
 
@@ -164,7 +164,7 @@ class RAGService:
         return document
 
     async def get_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """调用 Embedding API 获取向量表示"""
+        """Call the embedding API to generate vectors"""
         try:
             # 去除多余的空格，减少无意义 token
             texts = [text.replace("\n", " ") for text in texts]
@@ -179,7 +179,7 @@ class RAGService:
     async def process_document(
         self, *, document_id: int, task_id: Optional[str] = None
     ) -> Document:
-        """处理已上传文档：切分、生成向量并写入向量表。"""
+        """Process an uploaded document by chunking, embedding, and storing its vectors."""
         document = self.mark_document_processing(document_id=document_id, task_id=task_id)
 
         chunks = self.text_splitter.split_text(document.content)
@@ -223,7 +223,7 @@ class RAGService:
     async def retrieve_relevant_chunks(
         self, *, query: str, owner_id: int, top_k: int = 3
     ) -> List[DocumentChunk]:
-        """根据 query 检索最相关的 DocumentChunks，并在可用时做重排。"""
+        """Retrieve the most relevant document chunks and rerank them when available."""
         if not self.has_ready_documents(owner_id=owner_id):
             return []
 
@@ -249,7 +249,7 @@ class RAGService:
 
         reranker = get_reranker()
         if reranker is None:
-            logger.warning("未安装 sentence-transformers 或重排模型不可用，跳过重排步骤。")
+            logger.warning("sentence-transformers is unavailable, so reranking is skipped.")
             return candidates[:top_k]
 
         logger.info(f"==> 使用 BGE-Reranker 对 {len(candidates)} 个候选片段进行重排...")

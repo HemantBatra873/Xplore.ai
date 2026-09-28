@@ -27,14 +27,14 @@ export default function RegisterPage() {
       if (err && typeof err === 'object' && 'response' in err) {
         const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } }
         if (axiosErr.response?.status === 409 || axiosErr.response?.status === 400) {
-          setError('该邮箱已被注册')
+          setError('That email is already registered')
         } else if (axiosErr.response?.data?.detail) {
           setError(axiosErr.response.data.detail)
         } else {
-          setError('注册失败，请稍后重试')
+          setError('Registration failed. Please try again.')
         }
       } else {
-        setError('连接服务器失败，请检查网络')
+        setError('Unable to connect to the server')
       }
     } finally {
       setLoading(false)
@@ -46,10 +46,10 @@ export default function RegisterPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">
-            FastAPI AI Agent
+            Xplore.ai
           </h1>
           <p className="text-sm text-[var(--text-tertiary)] mt-1">
-            创建账号开始使用
+            Create an account to get started
           </p>
         </div>
 
@@ -59,20 +59,20 @@ export default function RegisterPage() {
               to="/auth/login"
               className="flex-1 pb-3 text-sm font-medium text-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
             >
-              登录
+              Sign in
             </Link>
             <Link
               to="/auth/register"
               className="flex-1 pb-3 text-sm font-medium text-center text-brand-500 border-b-2 border-brand-500"
             >
-              注册
+              Create account
             </Link>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                用户名
+                Username
               </label>
               <input
                 id="username"
@@ -87,7 +87,7 @@ export default function RegisterPage() {
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                邮箱
+                Email
               </label>
               <input
                 id="email"
@@ -102,7 +102,7 @@ export default function RegisterPage() {
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                密码
+                Password
               </label>
               <input
                 id="password"
@@ -127,13 +127,13 @@ export default function RegisterPage() {
               disabled={loading}
               className="w-full py-2.5 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? '注册中...' : '注册'}
+              {loading ? 'Creating account...' : 'Create account'}
             </button>
           </form>
         </div>
 
         <p className="text-center mt-6 text-xs text-[var(--text-tertiary)]">
-          FastAPI AI Agent v0.1.0
+          Xplore.ai v0.1.0
         </p>
       </div>
     </div>

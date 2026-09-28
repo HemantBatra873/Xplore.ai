@@ -11,7 +11,7 @@ from app.services.task_service import TaskService
 router = APIRouter()
 
 
-@router.post("/", response_model=TaskOut, status_code=status.HTTP_201_CREATED, summary="创建任务")
+@router.post("/", response_model=TaskOut, status_code=status.HTTP_201_CREATED, summary="Create a task")
 async def create_task(
     task_in: TaskCreate,
     db: Session = Depends(get_db),
@@ -23,20 +23,20 @@ async def create_task(
     return TaskService.create_task(db, task_in, owner_id=current_user.id)
 
 
-@router.get("/", response_model=List[TaskOut], summary="获取当前用户的所有任务")
+@router.get("/", response_model=List[TaskOut], summary="List the current user tasks")
 async def list_tasks(
-    skip: int = Query(0, description="跳过前 N 条数据"),
-    limit: int = Query(100, description="限制返回数据的数量", le=100),
+    skip: int = Query(0, description="Number of records to skip"),
+    limit: int = Query(100, description="Maximum number of records to return", le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
-    获取当前用户的所有任务列表（支持分页）
+    List the current user tasks列表（支持分页）
     """
     return TaskService.list_tasks(db, owner_id=current_user.id, skip=skip, limit=limit)
 
 
-@router.get("/{task_id}", response_model=TaskOut, summary="获取任务详情")
+@router.get("/{task_id}", response_model=TaskOut, summary="Get task details")
 async def get_task(
     task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
@@ -46,7 +46,7 @@ async def get_task(
     return TaskService.get_task(db, task_id, owner_id=current_user.id)
 
 
-@router.put("/{task_id}", response_model=TaskOut, summary="更新任务信息")
+@router.put("/{task_id}", response_model=TaskOut, summary="Update task")
 async def update_task(
     task_id: int,
     task_in: TaskUpdate,
@@ -59,7 +59,7 @@ async def update_task(
     return TaskService.update_task(db, task_id, owner_id=current_user.id, task_in=task_in)
 
 
-@router.delete("/{task_id}", response_model=TaskOut, summary="删除指定任务")
+@router.delete("/{task_id}", response_model=TaskOut, summary="Delete a task")
 async def delete_task(
     task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):

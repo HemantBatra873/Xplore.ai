@@ -26,7 +26,7 @@ export default function HealthPage() {
       const data = await getHealth()
       setHealth(data)
     } catch {
-      setError('无法获取健康状态')
+      setError('Unable to load health status')
     } finally {
       setLoading(false)
     }
@@ -43,7 +43,7 @@ export default function HealthPage() {
   return (
     <div className="min-h-screen bg-[var(--bg-primary)]">
       <header className="h-14 border-b border-[var(--border-primary)] bg-[var(--bg-secondary)] flex items-center px-6 gap-4">
-        <h1 className="text-sm font-semibold text-[var(--text-primary)]">系统健康状态</h1>
+        <h1 className="text-sm font-semibold text-[var(--text-primary)]">System health</h1>
         <button onClick={fetchHealth} disabled={loading} className="p-1.5 rounded text-[var(--text-tertiary)] hover:text-[var(--text-primary)] disabled:opacity-50 transition-colors">
           <IconRefresh />
         </button>
@@ -60,7 +60,7 @@ export default function HealthPage() {
           <div className="text-center py-16">
             <p className="text-sm text-[var(--color-error)]">{error}</p>
             <button onClick={fetchHealth} className="mt-3 text-xs text-brand-500 hover:text-brand-400 transition-colors">
-              重试
+              Retry
             </button>
           </div>
         ) : health ? (
@@ -72,10 +72,10 @@ export default function HealthPage() {
                 <IconActivity className={allUp ? 'text-[var(--color-success)]' : 'text-[var(--color-warning)]'} />
                 <div>
                   <p className="text-sm font-medium text-[var(--text-primary)]">
-                    {allUp ? '所有服务正常运行' : '部分服务异常'}
+                    {allUp ? 'All services are operating normally' : 'Some services are degraded'}
                   </p>
                   <p className="text-xs text-[var(--text-tertiary)] mt-0.5">
-                    版本 {health.version} · {allUp ? '✓' : '⚠'} 每 10 秒自动刷新
+                    Version {health.version} · {allUp ? '✓' : '⚠'} Refreshes every 10 seconds
                   </p>
                 </div>
               </div>
@@ -92,7 +92,7 @@ export default function HealthPage() {
                           {serviceLabels[key] || key}
                         </p>
                         <p className="text-xs text-[var(--text-tertiary)] mt-0.5">
-                          {dep.status === 'up' ? '正常运行' : dep.error || '未知状态'}
+                          {dep.status === 'up' ? 'Operational' : dep.error || 'Unknown status'}
                         </p>
                       </div>
                     </div>
@@ -104,7 +104,7 @@ export default function HealthPage() {
                   </div>
                   {key === 'ollama' && dep.status === 'up' && 'models' in dep && Array.isArray((dep as { models?: string[] }).models) && (
                     <div className="mt-3 pt-3 border-t border-[var(--border-primary)]">
-                      <p className="text-xs text-[var(--text-tertiary)] mb-1">可用模型</p>
+                      <p className="text-xs text-[var(--text-tertiary)] mb-1">Available models</p>
                       <div className="flex flex-wrap gap-1">
                         {(dep as { models?: string[] }).models?.map((m: string) => (
                           <span key={m} className="text-xs px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-500">

@@ -43,15 +43,15 @@ class TestParsePdf:
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Helvetica", size=12)
-        pdf.cell(200, 10, text="Project Orion Secret", new_x="LMARGIN", new_y="NEXT")
-        pdf.cell(200, 10, text="Code: Aegis-2026-Omega", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(200, 10, text="Xplore.ai document fixture", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(200, 10, text="Code: Xplore-2026-Test", new_x="LMARGIN", new_y="NEXT")
         pdf.output(buf)
         raw_bytes = buf.getvalue()
 
         result = parse_pdf("secret.pdf", raw_bytes)
         assert result.file_type == "pdf"
-        assert "Project Orion Secret" in result.plain_text
-        assert "Aegis-2026-Omega" in result.plain_text
+        assert "Xplore.ai document fixture" in result.plain_text
+        assert "Xplore-2026-Test" in result.plain_text
 
 
 class TestParseFileDispatch:

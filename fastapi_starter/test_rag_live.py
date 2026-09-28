@@ -41,11 +41,11 @@ def main():
         headers = {"Authorization": f"Bearer {access_token}"}
         
         # 2. 上传测试文档
-        print("\n2. 上传知识库文档 (sample_knowledge.txt)...")
-        file_path = "sample_knowledge.txt"
+        print("\n2. Uploading a knowledge document...")
+        file_path = "README.md"
         try:
             with open(file_path, "rb") as f:
-                files = {"file": ("sample_knowledge.txt", f, "text/plain")}
+                files = {"file": ("README.md", f, "text/markdown")}
                 upload_resp = client.post(f"{BASE_URL}/rag/upload", headers=headers, files=files)
                 
             if upload_resp.status_code == 200:

@@ -45,7 +45,7 @@ export async function* streamQueryKnowledgeBase(
   })
 
   if (!response.ok) {
-    let errorMsg = '查询失败'
+    let errorMsg = 'Query failed'
     try {
       const err = await response.json()
       errorMsg = err.detail || errorMsg
@@ -56,7 +56,7 @@ export async function* streamQueryKnowledgeBase(
 
   const reader = response.body?.getReader()
   if (!reader) {
-    yield { error: '无法读取响应流' }
+    yield { error: 'Unable to read the response stream' }
     return
   }
 

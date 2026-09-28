@@ -83,7 +83,7 @@ fi
 
 echo ""
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}  🚀 FastAPI Starter 启动完成！${NC}"
+echo -e "${GREEN}  Xplore.ai is ready!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 echo -e "  LLM 模式:    ${MOCK_MODE}"

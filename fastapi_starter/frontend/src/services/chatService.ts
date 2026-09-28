@@ -20,7 +20,7 @@ export async function* streamChatMessage(message: string): AsyncGenerator<{
 }> {
   const useMock = import.meta.env.VITE_USE_MOCK === 'true'
   if (useMock) {
-    yield { content: '这是 Mock 模式下的流式回复。你可以继续体验对话流程，所有数据均为预设的演示数据。' }
+    yield { content: 'This is a streamed mock response. You can continue exploring the chat flow offline.' }
     return
   }
 
@@ -42,10 +42,10 @@ export async function* streamChatMessage(message: string): AsyncGenerator<{
       localStorage.removeItem('agent_token')
       localStorage.removeItem('agent_user')
       window.location.href = '/auth/login'
-      yield { error: '登录已过期，请重新登录' }
+      yield { error: 'Your session has expired. Please sign in again.' }
       return
     }
-    let errorMsg = '请求失败'
+    let errorMsg = 'Request failed'
     try {
       const err = await response.json()
       errorMsg = err.detail || errorMsg
@@ -56,7 +56,7 @@ export async function* streamChatMessage(message: string): AsyncGenerator<{
 
   const reader = response.body?.getReader()
   if (!reader) {
-    yield { error: '无法读取响应流' }
+    yield { error: 'Unable to read the response stream' }
     return
   }
 

@@ -31,7 +31,7 @@ export default function MessageList({ messages, isStreaming, onQuickAsk }: Messa
         {isStreaming && (
           <div className="flex items-center gap-2 text-sm text-[var(--text-tertiary)]">
             <span className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse" />
-            正在思考...
+            Thinking...
           </div>
         )}
         <div ref={bottomRef} />
@@ -90,7 +90,7 @@ function ReasoningBlock({ content }: { content: string }) {
           <svg className="w-3.5 h-3.5 group-open:rotate-90 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="9 18 15 12 9 6" />
           </svg>
-          思考过程
+          Reasoning
         </summary>
         <div className="px-3 pb-3 text-xs text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap">
           {content}
@@ -102,10 +102,10 @@ function ReasoningBlock({ content }: { content: string }) {
 
 function EmptyState({ onQuickAsk }: { onQuickAsk?: (question: string) => void }) {
   const quickQuestions = [
-    { label: '这个系统有哪些功能？', icon: '💡' },
-    { label: '帮我算一下 123 × 456', icon: '🧮' },
-    { label: '创建一个任务：学习 FastAPI', icon: '📋' },
-    { label: '今天北京天气怎么样？', icon: '🌤' },
+    { label: 'What can I do with this system?', icon: '💡' },
+    { label: 'Calculate 123 x 456', icon: '🧮' },
+    { label: 'Create a task: learn the Xplore.ai foundation', icon: '📋' },
+    { label: 'What is the weather in Beijing today?', icon: '🌤' },
   ]
 
   return (
@@ -117,10 +117,10 @@ function EmptyState({ onQuickAsk }: { onQuickAsk?: (question: string) => void })
           </svg>
         </div>
         <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-1">
-          开始对话
+          Start a conversation
         </h2>
         <p className="text-sm text-[var(--text-tertiary)] mb-6">
-          试试以下问题，快速体验核心功能
+          Try one of these prompts to explore the core features
         </p>
         <div className="grid grid-cols-1 gap-2">
           {quickQuestions.map((q) => (

@@ -11,9 +11,9 @@ from app.services.llm_observability_service import get_llm_overview_stats
 router = APIRouter()
 
 
-@router.get("/llm-stats", response_model=LLMStatsResponse, summary="获取 LLM 调用统计")
+@router.get("/llm-stats", response_model=LLMStatsResponse, summary="Get LLM call statistics")
 async def get_llm_stats(
-    days: int = Query(7, ge=1, le=30, description="统计最近 N 天的数据"),
+    days: int = Query(7, ge=1, le=30, description="Number of recent days to include"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
@@ -24,10 +24,10 @@ async def get_llm_stats(
     return get_llm_overview_stats(db, user_id=scoped_user_id, days=days)
 
 
-@router.get("/llm-calls", response_model=list[LLMCallLogOut], summary="查看最近的 LLM 调用记录")
+@router.get("/llm-calls", response_model=list[LLMCallLogOut], summary="List recent LLM calls")
 async def list_llm_calls(
-    skip: int = Query(0, ge=0, description="跳过前 N 条记录（用于分页）"),
-    limit: int = Query(20, ge=1, le=100, description="返回最近多少条日志"),
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(20, ge=1, le=100, description="Maximum number of recent logs to return"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):

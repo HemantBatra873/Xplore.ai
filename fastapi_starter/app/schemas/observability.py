@@ -44,12 +44,12 @@ class UserLLMStats(BaseModel):
 
 
 class LLMStatsResponse(BaseModel):
-    total_calls: int = Field(..., description="总调用次数")
-    successful_calls: int = Field(..., description="成功次数")
-    failed_calls: int = Field(..., description="失败次数")
-    total_tokens: int = Field(..., description="总 token 数")
-    total_cost_usd: float = Field(..., description="估算总成本（美元）")
-    avg_latency_ms: float = Field(..., description="平均耗时（毫秒）")
+    total_calls: int = Field(..., description="Total calls")
+    successful_calls: int = Field(..., description="Successful calls")
+    failed_calls: int = Field(..., description="Failed calls")
+    total_tokens: int = Field(..., description="Total tokens")
+    total_cost_usd: float = Field(..., description="Estimated total cost in USD")
+    avg_latency_ms: float = Field(..., description="Average latency in milliseconds")
     daily_stats: List[DailyLLMStats]
     endpoint_stats: List[EndpointLLMStats]
     per_user_stats: List[UserLLMStats]

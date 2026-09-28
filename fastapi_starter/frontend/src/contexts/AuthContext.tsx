@@ -13,27 +13,27 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('agent_token'))
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('xplore_token'))
   const [user, setUser] = useState<User | null>(() => {
     try {
-      const stored = localStorage.getItem('agent_user')
+      const stored = localStorage.getItem('xplore_user')
       return stored ? JSON.parse(stored) : null
     } catch {
-      localStorage.removeItem('agent_user')
+      localStorage.removeItem('xplore_user')
       return null
     }
   })
 
   const login = useCallback((newToken: string, newUser: User) => {
-    localStorage.setItem('agent_token', newToken)
-    localStorage.setItem('agent_user', JSON.stringify(newUser))
+    localStorage.setItem('xplore_token', newToken)
+    localStorage.setItem('xplore_user', JSON.stringify(newUser))
     setToken(newToken)
     setUser(newUser)
   }, [])
 
   const logout = useCallback(() => {
-    localStorage.removeItem('agent_token')
-    localStorage.removeItem('agent_user')
+    localStorage.removeItem('xplore_token')
+    localStorage.removeItem('xplore_user')
     setToken(null)
     setUser(null)
   }, [])

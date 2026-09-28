@@ -35,7 +35,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
             }`}
           >
             <IconFile />
-            知识库
+            Knowledge
           </button>
           <button
             onClick={() => setActiveTab('tasks')}
@@ -46,7 +46,7 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
             }`}
           >
             <IconWrench />
-            任务
+            Tasks
           </button>
           <button
             onClick={onClose}

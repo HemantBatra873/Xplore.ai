@@ -88,8 +88,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="FastAPI Starter",
-    description="A production-ready FastAPI AI Agent starter project.",
+    title="Xplore.ai",
+    description="Xplore.ai AI workspace foundation.",
     version="0.1.0",
     lifespan=lifespan,
     docs_url=None,
@@ -222,6 +222,6 @@ else:
     @app.get("/", summary="根目录欢迎信息", tags=["Root"])
     async def root():
         return {
-            "message": "Welcome to FastAPI Starter. Visit /docs for API documentation.",
+            "message": "Welcome to Xplore.ai. Visit /docs for API documentation.",
             "docs_url": "/docs",
         }
