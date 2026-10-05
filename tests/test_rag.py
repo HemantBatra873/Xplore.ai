@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 from app.models.document import DOCUMENT_STATUS_QUEUED, DOCUMENT_STATUS_READY, Document
+from app.models.user import User
 from app.services.rag_service import RAGService
 
 
@@ -21,6 +22,13 @@ def _create_user_and_login(client, suffix: str) -> str:
     )
     assert response.status_code == 200
     return response.json()["access_token"]
+
+
+def _default_workspace_id(db_session, user_id: int) -> int:
+    user = db_session.get(User, user_id)
+    assert user is not None
+    assert user.default_workspace_id is not None
+    return user.default_workspace_id
 
 
 def test_upload_document_creates_async_job(client, monkeypatch, db_session):
@@ -47,11 +55,15 @@ def test_upload_document_creates_async_job(client, monkeypatch, db_session):
     assert payload["chunks_count"] == 0
     assert payload["file_type"] == "txt"
 
+    user_id = int(
+        client.get("/api/v1/users/me", headers={"Authorization": f"Bearer {token}"}).json()["id"]
+    )
     document = db_session.get(Document, payload["id"])
     assert document is not None
     assert document.status == DOCUMENT_STATUS_QUEUED
     assert document.processing_task_id == "task-rag-upload-1"
-    assert document.owner_id is not None
+    assert document.owner_id == user_id
+    assert document.workspace_id == _default_workspace_id(db_session, user_id)
     assert document.file_type == "txt"
 
 
@@ -60,9 +72,11 @@ def test_query_knowledge_base_uses_current_user_scope(client, monkeypatch, db_se
     user_id = int(
         client.get("/api/v1/users/me", headers={"Authorization": f"Bearer {token}"}).json()["id"]
     )
+    workspace_id = _default_workspace_id(db_session, user_id)
 
     ready_doc = Document(
         owner_id=user_id,
+        workspace_id=workspace_id,
         filename="ready.txt",
         content="rag content",
         status=DOCUMENT_STATUS_READY,
@@ -71,8 +85,8 @@ def test_query_knowledge_base_uses_current_user_scope(client, monkeypatch, db_se
     db_session.add(ready_doc)
     db_session.commit()
 
-    async def fake_retrieve(_self, *, query=None, owner_id, top_k=None):
-        assert owner_id == user_id
+    async def fake_retrieve(_self, *, query=None, workspace_id, top_k=None, owner_id=None):
+        assert workspace_id == _default_workspace_id(db_session, user_id)
         assert query == "What is in my knowledge base?"
         assert top_k == 2
         return [SimpleNamespace(content="A knowledge passage that belongs only to the current user")]
@@ -116,9 +130,11 @@ def test_worker_requeues_owned_document_and_returns_task_status(client, monkeypa
     user_id = int(
         client.get("/api/v1/users/me", headers={"Authorization": f"Bearer {token}"}).json()["id"]
     )
+    workspace_id = _default_workspace_id(db_session, user_id)
 
     document = Document(
         owner_id=user_id,
+        workspace_id=workspace_id,
         filename="retry.txt",
         content="retry me",
         status=DOCUMENT_STATUS_READY,
@@ -193,8 +209,12 @@ def test_upload_md_document(client, monkeypatch, db_session):
     assert payload["file_type"] == "md"
     assert payload["status"] == DOCUMENT_STATUS_QUEUED
 
+    user_id = int(
+        client.get("/api/v1/users/me", headers={"Authorization": f"Bearer {token}"}).json()["id"]
+    )
     document = db_session.get(Document, payload["id"])
     assert document.file_type == "md"
+    assert document.workspace_id == _default_workspace_id(db_session, user_id)
     assert "Title" in document.content
 
 
@@ -232,8 +252,12 @@ def test_upload_pdf_document(client, monkeypatch, db_session):
     assert payload["file_type"] == "pdf"
     assert payload["status"] == DOCUMENT_STATUS_QUEUED
 
+    user_id = int(
+        client.get("/api/v1/users/me", headers={"Authorization": f"Bearer {token}"}).json()["id"]
+    )
     document = db_session.get(Document, payload["id"])
     assert document.file_type == "pdf"
+    assert document.workspace_id == _default_workspace_id(db_session, user_id)
     assert "Xplore.ai" in document.content
 
 
@@ -279,7 +303,7 @@ def test_rag_query_stream_returns_sse(client, monkeypatch):
     class FakeChunk:
         content = "streamed reply chunk"
 
-    async def fake_retrieve(_self, *, query=None, owner_id=None, top_k=None):
+    async def fake_retrieve(_self, *, query=None, workspace_id=None, top_k=None, owner_id=None):
         return [FakeChunk()]
 
     async def fake_stream_create(**kwargs):

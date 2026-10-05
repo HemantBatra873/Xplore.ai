@@ -6,6 +6,7 @@ from app.core.logging import logger
 from app.core.security import get_password_hash, verify_password
 from app.models.user import User
 from app.schemas.user import PasswordUpdate, UserCreate, UserLLMConfigUpdate
+from app.services.workspace_service import WorkspaceService
 from app.utils.encryption import encrypt_api_key
 from app.utils.errors import AppException
 
@@ -44,6 +45,8 @@ class UserService:
         db.add(db_user)
         db.commit()
         db.refresh(db_user)  # Refresh for DB-generated id
+
+        WorkspaceService.create_personal_workspace(db, db_user)
 
         logger.info(f"User created successfully. ID: {db_user.id}")
         return db_user

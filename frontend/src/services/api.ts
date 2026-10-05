@@ -3,6 +3,27 @@ import { getMockResponse } from '@/mock/data'
 
 const useMock = import.meta.env.VITE_USE_MOCK === 'true'
 
+export const WORKSPACE_HEADER = 'X-Workspace-Id'
+
+export function getStoredWorkspaceId(): string | null {
+  return localStorage.getItem('xplore_workspace')
+}
+
+export function buildAuthFetchHeaders(
+  extra: Record<string, string> = {},
+): Record<string, string> {
+  const headers: Record<string, string> = { ...extra }
+  const token = localStorage.getItem('xplore_token')
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+  const workspaceId = getStoredWorkspaceId()
+  if (workspaceId) {
+    headers[WORKSPACE_HEADER] = workspaceId
+  }
+  return headers
+}
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE || '/api/v1',
   headers: {
@@ -31,6 +52,10 @@ api.interceptors.request.use((config) => {
   const token = localStorage.getItem('xplore_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
+  }
+  const workspaceId = getStoredWorkspaceId()
+  if (workspaceId) {
+    config.headers[WORKSPACE_HEADER] = workspaceId
   }
   return config
 })

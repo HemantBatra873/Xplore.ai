@@ -66,10 +66,12 @@ def create_llm_call_log(
     latency_ms: float,
     status: str,
     error_message: Optional[str] = None,
+    workspace_id: Optional[int] = None,
 ) -> None:
     try:
         log = LLMCallLog(
             user_id=user_id,
+            workspace_id=workspace_id,
             endpoint=endpoint,
             model_name=settings.LLM_MODEL_NAME,
             provider=settings.LLM_PROVIDER,
@@ -93,12 +95,18 @@ def create_llm_call_log(
 
 
 def get_llm_overview_stats(
-    db: Session, *, user_id: Optional[int] = None, days: int = 7
+    db: Session,
+    *,
+    user_id: Optional[int] = None,
+    workspace_id: Optional[int] = None,
+    days: int = 7,
 ) -> dict[str, Any]:
     cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
     base_query = db.query(LLMCallLog).filter(LLMCallLog.created_at >= cutoff)
     if user_id is not None:
         base_query = base_query.filter(LLMCallLog.user_id == user_id)
+    if workspace_id is not None:
+        base_query = base_query.filter(LLMCallLog.workspace_id == workspace_id)
 
     rows = base_query.all()
     total_calls = len(rows)
@@ -119,6 +127,8 @@ def get_llm_overview_stats(
     ).filter(LLMCallLog.created_at >= cutoff)
     if user_id is not None:
         daily_query = daily_query.filter(LLMCallLog.user_id == user_id)
+    if workspace_id is not None:
+        daily_query = daily_query.filter(LLMCallLog.workspace_id == workspace_id)
     daily_query = daily_query.group_by(func.date(LLMCallLog.created_at)).order_by(
         func.date(LLMCallLog.created_at)
     )
@@ -141,6 +151,8 @@ def get_llm_overview_stats(
     ).filter(LLMCallLog.created_at >= cutoff)
     if user_id is not None:
         endpoint_query = endpoint_query.filter(LLMCallLog.user_id == user_id)
+    if workspace_id is not None:
+        endpoint_query = endpoint_query.filter(LLMCallLog.workspace_id == workspace_id)
     endpoint_query = endpoint_query.group_by(LLMCallLog.endpoint).order_by(
         func.count(LLMCallLog.id).desc()
     )
@@ -162,6 +174,8 @@ def get_llm_overview_stats(
     ).filter(LLMCallLog.created_at >= cutoff)
     if user_id is not None:
         per_user_query = per_user_query.filter(LLMCallLog.user_id == user_id)
+    if workspace_id is not None:
+        per_user_query = per_user_query.filter(LLMCallLog.workspace_id == workspace_id)
     per_user_query = per_user_query.group_by(LLMCallLog.user_id).order_by(
         func.count(LLMCallLog.id).desc()
     )

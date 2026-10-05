@@ -9,15 +9,16 @@ from app.utils.errors import AppException
 
 class TaskService:
     @staticmethod
-    def create_task(db: Session, task_in: TaskCreate, owner_id: int) -> Task:
-        """
-        Create a new task.
-        """
+    def create_task(
+        db: Session, task_in: TaskCreate, owner_id: int, workspace_id: int
+    ) -> Task:
+        """Create a new task in a workspace."""
         new_task = Task(
             title=task_in.title,
             description=task_in.description,
             status=task_in.status,
             owner_id=owner_id,
+            workspace_id=workspace_id,
         )
         db.add(new_task)
         db.commit()
@@ -25,14 +26,12 @@ class TaskService:
         return new_task
 
     @staticmethod
-    def list_tasks(db: Session, owner_id: int, skip: int = 0, limit: int = 100):
-        """
-        List tasks for the current user.
-        """
+    def list_tasks(db: Session, workspace_id: int, skip: int = 0, limit: int = 100):
+        """List tasks for a workspace."""
         return (
             db.execute(
                 select(Task)
-                .where(Task.owner_id == owner_id)
+                .where(Task.workspace_id == workspace_id)
                 .offset(skip)
                 .limit(limit)
                 .order_by(Task.created_at.desc())
@@ -42,12 +41,10 @@ class TaskService:
         )
 
     @staticmethod
-    def get_task(db: Session, task_id: int, owner_id: int) -> Task:
-        """
-        Get a single task by id.
-        """
+    def get_task(db: Session, task_id: int, workspace_id: int) -> Task:
+        """Get a single task by id within a workspace."""
         task = db.execute(
-            select(Task).where(Task.id == task_id, Task.owner_id == owner_id)
+            select(Task).where(Task.id == task_id, Task.workspace_id == workspace_id)
         ).scalar_one_or_none()
 
         if not task:
@@ -57,13 +54,12 @@ class TaskService:
         return task
 
     @staticmethod
-    def update_task(db: Session, task_id: int, owner_id: int, task_in: TaskUpdate) -> Task:
-        """
-        Update task
-        """
-        task = TaskService.get_task(db, task_id, owner_id)
+    def update_task(
+        db: Session, task_id: int, workspace_id: int, task_in: TaskUpdate
+    ) -> Task:
+        """Update a task in a workspace."""
+        task = TaskService.get_task(db, task_id, workspace_id)
 
-        # Update only fields that were provided
         update_data = task_in.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(task, key, value)
@@ -73,11 +69,9 @@ class TaskService:
         return task
 
     @staticmethod
-    def delete_task(db: Session, task_id: int, owner_id: int) -> Task:
-        """
-        Delete a task.
-        """
-        task = TaskService.get_task(db, task_id, owner_id)
+    def delete_task(db: Session, task_id: int, workspace_id: int) -> Task:
+        """Delete a task in a workspace."""
+        task = TaskService.get_task(db, task_id, workspace_id)
         db.delete(task)
         db.commit()
         return task

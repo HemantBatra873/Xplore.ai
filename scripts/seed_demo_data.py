@@ -47,8 +47,14 @@ def seed():
         db.flush()
         logger.info(f"Created demo user (id={demo_user.id}, password={DEMO_PASSWORD})")
 
+        from app.services.workspace_service import WorkspaceService
+
+        workspace = WorkspaceService.create_personal_workspace(db, demo_user, commit=False)
+        logger.info(f"Created personal workspace (id={workspace.id})")
+
         doc = Document(
             owner_id=demo_user.id,
+            workspace_id=workspace.id,
             filename="welcome.txt",
             file_type="txt",
             content=(
@@ -92,7 +98,7 @@ def seed():
             },
         ]
         for t in tasks_data:
-            db.add(Task(owner_id=demo_user.id, **t))
+            db.add(Task(owner_id=demo_user.id, workspace_id=workspace.id, **t))
 
         logger.info(f"Created {len(tasks_data)} demo tasks")
 

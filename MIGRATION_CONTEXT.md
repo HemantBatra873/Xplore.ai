@@ -1,142 +1,187 @@
-# Xplore.ai Phase 1 Migration Context
+# Xplore.ai Migration Context
 
 ## Phase 1 status: PASS WITH FIXES
 
-Phase 1 rebrands and cleans the existing FastAPI + React starter foundation at the repository root. Current functionality was preserved. Workspaces, agents, new RAG architecture, integrations, and other Phase 2+ features were not implemented.
+Phase 1 identity cleanup is complete at repository root `C:\Users\HemantBatra\Desktop\Code\Personal\Xplore.ai`. See the Phase 1 section history in git for the full Phase 1 audit record. Summary: Xplore.ai branding, English product surface, `xplore_token` / `xplore_user`, `xplore_db`, and no nested `fastapi_starter` package.
 
-## What was already correct
+---
 
-- Product title, frontend metadata, navbar, setup/login/register copy, README, architecture docs, Docker container names, Prometheus job name, CI image tag, LICENSE, and seed content already used Xplore.ai.
-- Frontend UI source under `frontend/src` was English and used `en-US` date/time formatting.
-- No active Orion / GXYY / Aegis / `idkhgxyy` lore remained outside this handoff document.
-- No nested `fastapi_starter` runtime package or required project directory exists; the application imports from `app`.
-- Runtime package name remained `app` (intentional).
-- User-facing HTTP error messages, tool schemas, LLM/RAG system prompts, and seed records were already English.
-- Phase 2 architecture (workspaces, agents, new knowledge model, new integrations) was not introduced.
+## Phase 2 status: PASS WITH FIXES
 
-## What was incorrect
+Phase 2 implements the **Workspace & Membership foundation** only. Agents, Conversations, Knowledge Bases/Collections, integrations, and RAG redesign were not implemented.
 
-- Auth storage keys were inconsistent: `AuthContext` / `api.ts` used `xplore_token` / `xplore_user`, but chat streaming, RAG streaming, and the screenshot helper still used `agent_token` / `agent_user`, which would break authenticated streaming after login.
-- Logger name remained `fastapi_starter`.
-- Default database name remained `fastapi_db` in config, Compose, CI, Makefile, and backup/restore scripts.
-- Grafana dashboard provider/title still said FastAPI; dashboard file was still named `fastapi.json`.
-- `CONTRIBUTING.md` still cloned/cd into `fastapi_starter`.
-- Several OpenAPI-visible router/schema descriptions remained Chinese or mixed Chinese/English.
-- Calculator tool error strings returned to the model remained Chinese.
-- Stale Chinese starter MVP packaging doc `docs/project_mvp.md` was still present.
-- Demo/eval/live scripts and some test fixtures still used Chinese product/demo text or lore-style queries.
-- Live RAG script used `/api` instead of `/api/v1` and asked a starter-lore question.
+### Architecture
 
-## What was changed in this validation pass
+**New models / entities**
 
-1. Unified frontend auth keys to `xplore_token` / `xplore_user` in chat/RAG streaming services and screenshot script.
-2. Renamed logger to `xplore_ai`.
-3. Renamed default DB to `xplore_db` across `.env.example`, `app/core/config.py`, Compose, CI, Makefile, backup/restore.
-4. Rebranded Grafana dashboard labels and renamed `grafana/dashboards/fastapi.json` → `xplore-ai.json`.
-5. Updated `CONTRIBUTING.md` clone paths to Xplore.ai.
-6. Translated OpenAPI-visible router/schema descriptions and calculator tool errors to English.
-7. Deleted `docs/project_mvp.md`.
-8. English-ified demo/eval/live scripts and remaining Chinese product/demo test fixtures.
-9. Translated remaining Chinese comments/docstrings/logs across backend, tests, Compose, Makefile, Prometheus, bootstrap, Alembic, Dockerfile notes, and `.env.example`.
-10. Updated `docs/changes.md` and this handoff document.
+- `Workspace` (`app/models/workspace.py`): `id`, `name`, `slug` (unique), `created_by_id`, `is_active`, `created_at`, `updated_at`
+- `WorkspaceMembership`: `workspace_id`, `user_id`, `role`, timestamps, unique `(workspace_id, user_id)`
+- `User.default_workspace_id` → preferred workspace for clients that omit `X-Workspace-Id`
+- Resource tenancy columns:
+  - `Task.workspace_id` (required)
+  - `Document.workspace_id` (nullable for legacy orphans; set for normal use)
+  - `LLMCallLog.workspace_id` (nullable)
 
-## Files added / modified / deleted
+**Relationships**
 
-### Added
-- None required beyond this refreshed handoff.
+```text
+User
+ ├── default_workspace_id → Workspace
+ ├── WorkspaceMembership* → Workspace
+ └── created Workspace*
+Workspace
+ ├── Membership* (user + role)
+ ├── Task*
+ ├── Document*
+ └── LLMCallLog*
+```
 
-### Modified
-- `app/core/logging.py`
-- `app/core/config.py`
-- `app/main.py`
-- `app/api/routers/auth.py`
-- `app/api/routers/chat.py`
-- `app/api/routers/tasks.py`
-- `app/api/routers/users.py`
-- `app/api/routers/worker.py`
-- `app/api/routers/observability.py`
-- `app/api/routers/rag.py`
-- `app/schemas/auth.py`
-- `app/schemas/user.py`
-- `app/schemas/task.py`
-- `app/services/llm_service.py`
-- `frontend/src/services/chatService.ts`
-- `frontend/src/services/ragService.ts`
-- `scripts/screenshot_frontend.py`
-- `scripts/backup_db.sh`
-- `scripts/restore_db.sh`
-- `scripts/e2e_test.py`
-- `scripts/eval_llm_observability.py`
-- `scripts/locustfile.py`
-- `test_rag_live.py`
-- `tests/test_rag.py`
-- `tests/test_task_endpoints.py`
-- `.env.example`
-- `docker-compose.yml`
-- `.github/workflows/ci.yml`
-- `Makefile`
-- `CONTRIBUTING.md`
-- `grafana/provisioning/dashboards/dashboards.yml`
-- `docs/changes.md`
-- `MIGRATION_CONTEXT.md`
+Creator attribution (`Task.owner_id`, `Document.owner_id`, `LLMCallLog.user_id`) is preserved. **Tenancy boundary is `workspace_id`.**
 
-### Deleted / renamed
-- Deleted `docs/project_mvp.md`
-- Renamed `grafana/dashboards/fastapi.json` → `grafana/dashboards/xplore-ai.json`
+**Role / permission design**
 
-## Important architectural / configuration decisions
+- Roles: `owner` > `admin` > `member` (rank-based in `app/services/workspace_permissions.py`)
+- Permission keys: `workspace:read|update|delete`, `members:read|invite|manage|remove`, `resources:read|write`
+- New permissions can be added to `PERMISSIONS` without rewriting models
 
-- Keep the Python package named `app`. There is no `fastapi_starter` import package.
-- Project root is `C:\Users\HemantBatra\Desktop\Code\Personal\Xplore.ai` with no nested starter directory required.
-- Default PostgreSQL database name is now `xplore_db`. Existing local volumes created with `fastapi_db` need recreation or manual rename if reused.
-- Frontend auth localStorage keys are exclusively `xplore_token` / `xplore_user`.
-- API routes, models, migrations, service boundaries, Celery worker flow, and RAG architecture remain as in the starter foundation.
-- Source comments, docstrings, and developer-facing script/config text are English. Screenshot PNGs under `docs/images/` may still contain older UI pixels and are not source comments.
-- Existing local demo credentials remain available through `scripts/seed_demo_data.py` for development only.
+**Workspace ownership strategy**
 
-## Validation commands executed and exact results
+- Every new user gets a personal workspace + `owner` membership (`UserService` → `WorkspaceService.create_personal_workspace`)
+- Existing users are backfilled by Alembic migration to a personal workspace named `{username}'s Workspace` with slug `user-{id}-{username}`
+- Existing tasks/documents/LLM logs for a user are attached to that user's personal workspace
+- Additional workspaces can be created; members can be invited with roles
 
-1. Repository structure check
-   - Result: Project operates from repository root. Nested `fastapi_starter` directory: absent.
+### Database
 
-2. Legacy identity scans
-   - Searched: `FastAPI Starter`, `FastAPI AI Agent`, `fastapi-starter`, `fastapi_starter`, `Orion`, `GXYY`, `Aegis`, `idkhgxyy`, `zh-CN`, `agent_token`, `fastapi_db`.
-   - Result after fixes: no active application references remain outside intentional historical mentions in this handoff.
+**Migration file created**
 
-3. Chinese-text scan (source/config/scripts/tests)
-   - Result: no Chinese character matches remain in application source, config, scripts, or tests after the comment-translation pass.
-   - Note: binary screenshot PNGs under `docs/images/` were not re-exported.
+- `alembic/versions/d8e4f1a2b3c4_add_workspace_foundation.py`
+- `down_revision`: `b35f62ae79bf` (previous head)
 
-4. Frontend dependency install
-   - Command: `npm ci` in `frontend/`
-   - Result: success (`added 338 packages`).
+**Backfill strategy**
 
-5. Frontend build
-   - Command: `npm run build` in `frontend/`
-   - Result: **PASS** (`tsc -b && vite build` succeeded; production bundle written to `frontend/dist`).
+1. Create `workspaces` + `workspace_memberships`
+2. Add nullable `workspace_id` / `default_workspace_id` columns
+3. For each existing user: insert personal workspace, owner membership, set `default_workspace_id`, update owned tasks/documents/logs
+4. Make `tasks.workspace_id` NOT NULL
 
-6. Frontend lint
-   - Command: `npm run lint` in `frontend/`
-   - Result: **FAIL** with 20 pre-existing eslint errors (react-hooks/set-state-in-effect, no-empty, react-refresh/only-export-components). These were not introduced by Phase 1 identity fixes and were left unchanged.
+**Assumptions**
 
-7. Backend tests
-   - Command intended: `python -m pytest -q`
-   - Result: **BLOCKED**. Host Python resolves only to Microsoft Store stubs (`python` / `python3` not a usable interpreter). Docker CLI is installed, but Docker Desktop engine is not running (`dockerDesktopLinuxEngine` pipe missing), so Compose-based pytest was also unavailable.
+- Alembic is the schema authority; `Base.metadata.create_all()` at startup remains for local convenience but must not replace migrations
+- Migration SQL uses `RETURNING` (PostgreSQL). Production/CI DB is PostgreSQL/`xplore_db`
 
-8. Application startup
-   - Result: **NOT VERIFIED** for the same Python/Docker blockers.
+**Migration execution in this environment**
 
-## Remaining issues / blockers
+- **BLOCKED** — no usable host Python; Docker Desktop engine not running. Migration was authored and reviewed but not applied to a live database in this session.
 
-- Backend pytest and runtime startup could not be executed in this environment.
-- Frontend eslint currently fails on pre-existing rules; build still passes.
-- If a developer already has a Compose volume initialized as `fastapi_db`, recreate volumes or migrate the DB name after pulling these changes.
-- `Base.metadata.create_all()` still runs at startup in addition to Alembic migrations; intentionally unchanged in Phase 1.
+### API
 
-## Phase 2 notes
+**New endpoints** (`/api/v1/workspaces`)
 
-- Start from the validated Xplore.ai identity and root layout.
-- Preserve the `app` package decision unless there is a coordinated package migration plan.
-- Treat current chat, RAG, tools, task, and user APIs as legacy contracts before designing Workspaces or Agents.
-- Do not assume current `owner_id` filtering is a complete organization/tenant model.
-- Prefer fixing frontend lint debt separately from product Phase 2 work if CI begins enforcing `npm run lint`.
+| Method | Path | Notes |
+|--------|------|--------|
+| POST | `/` | Create workspace (caller becomes owner) |
+| GET | `/` | List caller's workspaces (+ role) |
+| GET | `/{id}` | Get workspace (members only) |
+| PATCH | `/{id}` | Update name/slug/active (admin/owner) |
+| GET | `/{id}/members` | List members |
+| POST | `/{id}/members` | Invite member (admin+) |
+| PATCH | `/{id}/members/{user_id}` | Change role |
+| DELETE | `/{id}/members/{user_id}` | Remove member |
+
+**Changed endpoints**
+
+- Tasks, RAG, Worker, Chat, Observability now resolve workspace via `get_workspace_access`
+- Clients should send header **`X-Workspace-Id`**
+- If omitted, the user's **default workspace** is used (compatibility)
+- Login rejects inactive users (`code=1006`)
+- `GET /users/{id}` restricted: non-superusers may only read themselves
+- Chat/tasks/worker routes use `get_current_active_user` (inactive blocked)
+
+**Authorization behavior**
+
+- Centralized in `WorkspaceService.get_workspace_access` + `WorkspaceAccess.require_permission` + `workspace_permissions.py`
+- Non-members receive 403 for workspace APIs and when spoofing `X-Workspace-Id`
+- Resource queries filter by `workspace_id` (not only `owner_id`)
+
+**Breaking changes**
+
+- Soft break: clients that relied on pure user-owned isolation still work via default workspace + optional header
+- Task responses now include `workspace_id`
+- Document responses may include `workspace_id`
+- Cross-user `GET /users/{id}` now 403 for non-superusers
+
+### Frontend
+
+- `WorkspaceContext` + `xplore_workspace` localStorage key
+- Axios + SSE fetch attach `X-Workspace-Id`
+- Navbar shows current workspace and a select to switch
+- `workspaceService.ts` for list/get/create
+- Mock mode covers `/workspaces/`
+- Auth keys remain `xplore_token` / `xplore_user`
+
+### Security
+
+- Membership-gated workspace access
+- IDOR mitigations: workspace-scoped tasks/docs/worker status; user profile self-or-superuser; inactive login blocked
+- Spoofed `X-Workspace-Id` for a non-member workspace → 403
+- Celery still processes by `document_id` after authorized enqueue (unchanged trust model for workers)
+
+### Files
+
+**Added**
+
+- `app/models/workspace.py`
+- `app/services/workspace_service.py`
+- `app/services/workspace_permissions.py`
+- `app/schemas/workspace.py`
+- `app/api/routers/workspaces.py`
+- `alembic/versions/d8e4f1a2b3c4_add_workspace_foundation.py`
+- `tests/test_workspaces.py`
+- `frontend/src/contexts/WorkspaceContext.tsx`
+- `frontend/src/services/workspaceService.ts`
+
+**Modified (important)**
+
+- Models: `user.py`, `task.py`, `document.py`, `llm_call_log.py`, `models/__init__.py`
+- Auth/deps: `app/api/deps.py`, `app/api/routers/auth.py`, `users.py`
+- Resource routers: `tasks.py`, `rag.py`, `worker.py`, `chat.py`, `observability.py`
+- Services: `task_service.py`, `rag_service.py`, `user_service.py`, `llm_service.py`, `mcp_service.py`, `llm_observability_service.py`
+- `app/main.py`, `scripts/seed_demo_data.py`
+- Tests: `test_rag.py`, `test_rag_service.py`
+- Frontend: `App.tsx`, `api.ts`, `Navbar.tsx`, `types/index.ts`, `chatService.ts`, `ragService.ts`, `mock/data.ts`
+- Docs: `docs/changes.md`, this file
+
+### Validation
+
+| Command / check | Result | Notes |
+|-----------------|--------|-------|
+| Architecture inspection | PASS | Models/auth/ownership surveyed before coding |
+| Alembic migration authored | PASS | File present; head chain `b35f62ae79bf` → `d8e4f1a2b3c4` |
+| `alembic upgrade head` | BLOCKED | No Python + Docker engine down |
+| `python -m pytest -q` | BLOCKED | Host Python is Microsoft Store stub only |
+| Workspace security tests added | PASS (authored) | `tests/test_workspaces.py` covers isolation, roles, inactive login, default workspace |
+| Existing API tests updated for workspace | PASS (authored) | RAG service/HTTP tests updated for `workspace_id` |
+| `npm run build` (frontend) | PASS | `tsc -b && vite build` succeeded after workspace UI |
+| `npm run lint` | NOT RE-RUN | Previously failed on pre-existing eslint rules; not used as Phase 2 gate |
+| Docker Compose / app startup | BLOCKED | Docker Desktop Linux engine not running |
+
+### Known issues
+
+- Backend tests and live migration were not executed in this environment
+- Frontend eslint debt remains (pre-existing)
+- Documents with historical `owner_id IS NULL` may still have null `workspace_id` after migration
+- Worker Celery task does not re-check membership inside the worker process (trusted enqueue path)
+- `Base.metadata.create_all()` still runs at API startup in addition to Alembic
+
+### Phase 3 handoff
+
+Phase 3 should build **on top of Workspace**, not replace it:
+
+1. **Tenancy key**: all new Knowledge / Conversation / Agent tables must include `workspace_id` FK and use `get_workspace_access` / `require_permission`
+2. **Do not reintroduce user-only ownership** as the isolation boundary; keep `owner_id`/`created_by` for audit only
+3. **Header contract**: frontend already sends `X-Workspace-Id` from `xplore_workspace`; new APIs should honor the same dependency
+4. **Roles**: extend `PERMISSIONS` in `workspace_permissions.py` (e.g. `agents:manage`, `knowledge:admin`) rather than hardcoding role strings in routers
+5. **Migration discipline**: add Alembic revisions after `d8e4f1a2b3c4`; run `alembic upgrade head` before relying on new columns; do not depend on `create_all` for production
+6. **Default workspace**: every user should already have `default_workspace_id` after Phase 2 migration/register; Phase 3 features can assume membership exists
+7. **Out of Phase 2 scope (still TODO)**: Knowledge Bases/Collections redesign, Conversations/Messages, Agents, tool framework expansion, external integrations, new LLM provider architecture

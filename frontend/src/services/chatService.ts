@@ -1,4 +1,4 @@
-import api from './api'
+import api, { buildAuthFetchHeaders } from './api'
 
 export interface ChatRequest {
   message: string
@@ -24,16 +24,12 @@ export async function* streamChatMessage(message: string): AsyncGenerator<{
     return
   }
 
-  const token = localStorage.getItem('xplore_token')
   const baseUrl = import.meta.env.VITE_API_BASE || '/api/v1'
   const url = `${baseUrl}/chat/`
 
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: buildAuthFetchHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ message, stream: true }),
   })
 

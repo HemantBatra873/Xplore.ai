@@ -11,7 +11,8 @@ from redis.asyncio import Redis
 from sqlalchemy import text
 
 from app.api.middleware import RequestIDMiddleware
-from app.api.routers import auth, chat, health, observability, rag, tasks, users, worker
+import app.models.workspace  # noqa: F401 — register workspace models with SQLAlchemy metadata
+from app.api.routers import auth, chat, health, observability, rag, tasks, users, worker, workspaces
 from app.core.config import settings
 from app.core.logging import logger
 from app.db.base import Base
@@ -196,6 +197,7 @@ app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
 app.include_router(chat.router, prefix="/api/v1/chat", tags=["Chat"])
 app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["Tasks"])
+app.include_router(workspaces.router, prefix="/api/v1/workspaces", tags=["Workspaces"])
 app.include_router(worker.router, prefix="/api/v1/worker", tags=["Worker (Async)"])
 app.include_router(rag.router, prefix="/api/v1/rag", tags=["RAG"])
 app.include_router(observability.router, prefix="/api/v1/observability", tags=["Observability"])

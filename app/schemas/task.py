@@ -29,6 +29,7 @@ class TaskOut(TaskBase):
 
     id: int
     owner_id: int
+    workspace_id: int
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

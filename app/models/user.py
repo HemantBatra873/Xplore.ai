@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlalchemy import Boolean, String
+from sqlalchemy import Boolean, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -23,6 +23,11 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Preferred workspace for clients that omit X-Workspace-Id
+    default_workspace_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("workspaces.id", use_alter=True, name="fk_users_default_workspace_id"), nullable=True
+    )
 
     # Optional per-user LLM settings (multi-tenant BYOK)
     llm_provider: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)

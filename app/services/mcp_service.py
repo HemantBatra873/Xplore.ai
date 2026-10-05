@@ -106,7 +106,12 @@ _MCP_TOOL_DEFINITIONS = [
 _MCP_TOOL_HANDLERS: dict[str, dict[str, Any]] = {}
 
 
-def _register_handler(name: str, requires_db: bool = False, requires_user: bool = False):
+def _register_handler(
+    name: str,
+    requires_db: bool = False,
+    requires_user: bool = False,
+    requires_workspace: bool = False,
+):
     """Decorator to register an MCP tool handler."""
 
     def decorator(func):
@@ -114,6 +119,7 @@ def _register_handler(name: str, requires_db: bool = False, requires_user: bool 
             "handler": func,
             "requires_db": requires_db,
             "requires_user": requires_user,
+            "requires_workspace": requires_workspace,
         }
         return func
 
@@ -140,21 +146,27 @@ def _handle_system_status() -> str:
     return get_system_status()
 
 
-@_register_handler("list_tasks", requires_db=True, requires_user=True)
-def _handle_list_tasks(db: Session, user_id: int, status: Optional[str] = None) -> str:
+@_register_handler("list_tasks", requires_db=True, requires_user=True, requires_workspace=True)
+def _handle_list_tasks(
+    db: Session, user_id: int, workspace_id: int, status: Optional[str] = None
+) -> str:
     from app.services.llm_service import list_tasks
 
-    return list_tasks(db=db, user_id=user_id, status=status)
+    return list_tasks(db=db, user_id=user_id, workspace_id=workspace_id, status=status)
 
 
-@_register_handler("create_task", requires_db=True, requires_user=True)
-def _handle_create_task(db: Session, user_id: int, title: str, description: str = "") -> str:
+@_register_handler("create_task", requires_db=True, requires_user=True, requires_workspace=True)
+def _handle_create_task(
+    db: Session, user_id: int, workspace_id: int, title: str, description: str = ""
+) -> str:
     from app.schemas.task import TaskCreate
     from app.services.task_service import TaskService
 
     logger.info(f"==> [MCP] Model attempting to create task: title={title}")
     task_in = TaskCreate(title=title, description=description)
-    created_task = TaskService.create_task(db=db, task_in=task_in, owner_id=user_id)
+    created_task = TaskService.create_task(
+        db=db, task_in=task_in, owner_id=user_id, workspace_id=workspace_id
+    )
     return f"Task created. ID: {created_task.id}, Title: {created_task.title}"
 
 
@@ -183,6 +195,7 @@ class MCPService:
             name: {
                 "requires_db": info["requires_db"],
                 "requires_user": info["requires_user"],
+                "requires_workspace": info.get("requires_workspace", False),
             }
             for name, info in _MCP_TOOL_HANDLERS.items()
         }
@@ -193,10 +206,11 @@ class MCPService:
         arguments: dict,
         db: Optional[Session] = None,
         user_id: Optional[int] = None,
+        workspace_id: Optional[int] = None,
     ) -> str:
         """
         Unified tool entry point.
-        Routes by name and injects db and user_id when required.
+        Routes by name and injects db, user_id, and workspace_id when required.
         """
         if name not in _MCP_TOOL_HANDLERS:
             logger.warning(f"==> [MCP] Unknown tool call: {name}")
@@ -211,6 +225,10 @@ class MCPService:
             kwargs["db"] = db
         if info["requires_user"]:
             kwargs["user_id"] = user_id
+        if info.get("requires_workspace"):
+            if workspace_id is None:
+                return f"Tool '{name}' requires a workspace context."
+            kwargs["workspace_id"] = workspace_id
 
         try:
             result = handler(**kwargs)

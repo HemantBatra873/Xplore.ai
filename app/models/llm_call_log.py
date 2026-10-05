@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Optional
 
 from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -15,6 +16,9 @@ class LLMCallLog(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    workspace_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("workspaces.id"), nullable=True, index=True
+    )
     endpoint: Mapped[str] = mapped_column(String(100), index=True)
     model_name: Mapped[str] = mapped_column(String(100))
     provider: Mapped[str] = mapped_column(String(50), default="openai_compatible")

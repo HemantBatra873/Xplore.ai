@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
+import { useWorkspace } from '@/contexts/WorkspaceContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { IconSun, IconMoon, IconSearch, IconUser, IconLogout, IconSettings, IconMenu } from '@/components/ui/Icons'
 
 export default function Navbar({ onToggleSidebar }: { onToggleSidebar: () => void }) {
   const { user, logout } = useAuth()
+  const { currentWorkspace, workspaces, setCurrentWorkspace } = useWorkspace()
   const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -43,6 +45,28 @@ export default function Navbar({ onToggleSidebar }: { onToggleSidebar: () => voi
           Xplore.ai
         </span>
       </div>
+
+      {workspaces.length > 0 && (
+        <div className="hidden sm:flex items-center gap-2 min-w-0 max-w-[200px]">
+          <span className="text-xs text-[var(--text-tertiary)] shrink-0">Workspace</span>
+          <select
+            value={currentWorkspace?.id ?? ''}
+            onChange={(e) => {
+              const id = Number(e.target.value)
+              const next = workspaces.find((w) => w.id === id)
+              if (next) setCurrentWorkspace(next)
+            }}
+            className="h-8 flex-1 min-w-0 rounded-lg border border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--text-primary)] text-sm px-2 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+            aria-label="Select workspace"
+          >
+            {workspaces.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="flex-1 max-w-md mx-auto hidden md:block">
         <div className="relative">

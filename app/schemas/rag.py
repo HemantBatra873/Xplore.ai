@@ -10,6 +10,7 @@ class DocumentResponse(BaseModel):
     file_type: str
     status: str
     chunks_count: int
+    workspace_id: Optional[int] = None
     processing_task_id: Optional[str] = None
     error_message: Optional[str] = None
     created_at: datetime

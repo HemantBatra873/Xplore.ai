@@ -1,4 +1,4 @@
-import type { User, Document, Task, LLMStats, LLMCallLog, HealthStatus } from '@/types'
+import type { User, Document, Task, LLMStats, LLMCallLog, HealthStatus, Workspace } from '@/types'
 
 const NOW = new Date().toISOString()
 
@@ -25,6 +25,29 @@ const mockDocuments: Document[] = [
   { id: 2, filename: 'Product Notes.pdf', file_type: 'pdf', status: 'ready', chunks_count: 12, processing_task_id: null, error_message: null, created_at: daysAgo(1) },
   { id: 3, filename: 'API Reference.txt', file_type: 'txt', status: 'processing', chunks_count: 0, processing_task_id: 'task-abc', error_message: null, created_at: NOW },
   { id: 4, filename: 'Design Notes.md', file_type: 'md', status: 'failed', chunks_count: 0, processing_task_id: null, error_message: 'Embedding failed: dimension mismatch', created_at: daysAgo(3) },
+]
+
+const mockWorkspaces: Workspace[] = [
+  {
+    id: 1,
+    name: 'Personal',
+    slug: 'personal',
+    created_by_id: 1,
+    is_active: true,
+    role: 'owner',
+    created_at: daysAgo(30),
+    updated_at: NOW,
+  },
+  {
+    id: 2,
+    name: 'Team Demo',
+    slug: 'team-demo',
+    created_by_id: 1,
+    is_active: true,
+    role: 'owner',
+    created_at: daysAgo(7),
+    updated_at: NOW,
+  },
 ]
 
 const mockTasks: Task[] = [
@@ -109,6 +132,23 @@ const MOCK_RESPONSES: MockEntry[] = [
   { method: 'PUT', path: '/users/me/llm-config', handler: (data) => ({ ...mockUser, has_custom_llm_key: !!(data as Record<string, unknown>)?.api_key }) },
   { method: 'PUT', path: '/users/me/password', handler: () => ({ message: 'Password changed successfully' }) },
   { method: 'GET', path: '/chat/', handler: () => ({ reply: 'This is an offline mock response for frontend development.' }) },
+  { method: 'GET', path: '/workspaces/', handler: () => mockWorkspaces },
+  { method: 'POST', path: '/workspaces/', handler: (data) => {
+    const d = data as { name: string; slug?: string }
+    const workspace: Workspace = {
+      id: Date.now(),
+      name: d.name,
+      slug: d.slug || d.name.toLowerCase().replace(/\s+/g, '-'),
+      created_by_id: mockUser.id,
+      is_active: true,
+      role: 'owner',
+      created_at: NOW,
+      updated_at: NOW,
+    }
+    mockWorkspaces.push(workspace)
+    return workspace
+  }},
+  { method: 'GET', path: '/workspaces/{id}', handler: () => mockWorkspaces[0] },
   { method: 'GET', path: '/tasks/', handler: () => mockTasks },
   { method: 'POST', path: '/tasks/', handler: (data) => {
     const d = data as { title: string; description?: string }

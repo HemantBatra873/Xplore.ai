@@ -177,10 +177,18 @@ def get_system_status() -> str:
         return "Unable to read system status."
 
 
-def list_tasks(db: Session, user_id: int, status: str = None) -> str:
-    logger.info(f"==> Running local tool: list tasks (user_id={user_id}, status={status})")
+def list_tasks(
+    db: Session, user_id: int, workspace_id: int, status: str = None
+) -> str:
+    logger.info(
+        f"==> Running local tool: list tasks (user_id={user_id}, "
+        f"workspace_id={workspace_id}, status={status})"
+    )
     try:
-        stmt = select(Task).where(Task.owner_id == user_id)
+        stmt = select(Task).where(
+            Task.owner_id == user_id,
+            Task.workspace_id == workspace_id,
+        )
         if status:
             stmt = stmt.where(Task.status == status)
         stmt = stmt.order_by(Task.created_at.desc()).limit(10)
@@ -192,7 +200,7 @@ def list_tasks(db: Session, user_id: int, status: str = None) -> str:
             lines.append(f"  - [ID:{t.id}] [{t.status}] {t.title}")
             if t.description:
                 lines.append(f"    Description: {t.description}")
-            return "Current tasks:\n" + "\n".join(lines)
+        return "Current tasks:\n" + "\n".join(lines)
     except Exception as e:
         logger.error(f"Failed to list tasks: {e}")
         return "An error occurred while listing tasks."
@@ -286,7 +294,12 @@ async def _llm_completion_with_retry(llm_client, **kwargs):
             return await llm_client.chat.completions.create(**kwargs)
 
 
-async def generate_chat_reply(message: str, db: Session = None, current_user_id: int = None) -> str:
+async def generate_chat_reply(
+    message: str,
+    db: Session = None,
+    current_user_id: int = None,
+    workspace_id: int = None,
+) -> str:
     """
     Call the LLM for a chat reply (with tool calling).
     """
@@ -360,6 +373,7 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
                             arguments=arguments,
                             db=db,
                             user_id=current_user_id,
+                            workspace_id=workspace_id,
                         )
                     else:
                         tool_result = "Task creation failed: no database connection or signed-in user was available."
@@ -370,6 +384,7 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
                         arguments=arguments,
                         db=db,
                         user_id=current_user_id,
+                        workspace_id=workspace_id,
                     )
 
                 else:
@@ -406,6 +421,7 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
                 create_llm_call_log(
                     db,
                     user_id=current_user_id,
+                    workspace_id=workspace_id,
                     endpoint="/api/v1/chat",
                     prompt=message,
                     response=final_reply,
@@ -425,6 +441,7 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
                 create_llm_call_log(
                     db,
                     user_id=current_user_id,
+                    workspace_id=workspace_id,
                     endpoint="/api/v1/chat",
                     prompt=message,
                     response=final_reply,
@@ -443,6 +460,7 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
             create_llm_call_log(
                 db,
                 user_id=current_user_id,
+                workspace_id=workspace_id,
                 endpoint="/api/v1/chat",
                 prompt=message,
                 response=final_reply,
@@ -457,7 +475,9 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
         return f"System notice: the model call failed. Check the network or API configuration. Details: {str(e)}"
 
 
-async def generate_chat_reply_stream(message: str, db: Session = None, current_user_id: int = None):
+async def generate_chat_reply_stream(
+    message: str, db: Session = None, current_user_id: int = None, workspace_id: int = None
+):
     """
     Stream LLM chat replies (SSE). Tool calling is not supported in this path.
     Basic streaming only for demonstration.

@@ -21,6 +21,9 @@ class Document(Base):
     owner_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("users.id"), nullable=True, index=True
     )
+    workspace_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("workspaces.id"), nullable=True, index=True
+    )
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     file_type: Mapped[str] = mapped_column(String(16), default="txt", nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
@@ -42,6 +45,7 @@ class Document(Base):
     # One document has many chunks
     chunks = relationship("DocumentChunk", back_populates="document", cascade="all, delete-orphan")
     owner = relationship("User", backref="documents")
+    workspace = relationship("Workspace", backref="documents")
 
 
 class DocumentChunk(Base):

@@ -1,4 +1,4 @@
-import api from './api'
+import api, { buildAuthFetchHeaders } from './api'
 import type { Document } from '@/types'
 
 export async function listDocuments(): Promise<Document[]> {
@@ -31,16 +31,12 @@ export async function* streamQueryKnowledgeBase(
   query: string,
   topK = 3,
 ): AsyncGenerator<{ content?: string; source_chunks?: string[]; error?: string }> {
-  const token = localStorage.getItem('xplore_token')
   const baseUrl = import.meta.env.VITE_API_BASE || '/api/v1'
   const url = `${baseUrl}/rag/query/stream`
 
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: buildAuthFetchHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ query, top_k: topK }),
   })
 

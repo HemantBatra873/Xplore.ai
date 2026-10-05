@@ -18,11 +18,13 @@ class Task(Base):
     description: Mapped[str] = mapped_column(String, nullable=True)
     # Status: pending, in_progress, completed
     status: Mapped[str] = mapped_column(String(50), default="pending")
-    # FK to users
+    # Creator attribution (legacy) and workspace tenancy
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id"), index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc)
     )
 
     # Relationship: task.owner -> User
     owner = relationship("User", backref="tasks")
+    workspace = relationship("Workspace", backref="tasks")

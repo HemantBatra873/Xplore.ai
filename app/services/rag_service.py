@@ -56,10 +56,17 @@ class RAGService:
         )
 
     def create_document_record(
-        self, *, filename: str, content: str, owner_id: int, file_type: str = "txt"
+        self,
+        *,
+        filename: str,
+        content: str,
+        owner_id: int,
+        workspace_id: int,
+        file_type: str = "txt",
     ) -> Document:
         document = Document(
             owner_id=owner_id,
+            workspace_id=workspace_id,
             filename=filename,
             file_type=file_type,
             content=content,
@@ -71,10 +78,14 @@ class RAGService:
         self.db.refresh(document)
         return document
 
-    def attach_processing_task(self, *, document_id: int, owner_id: int, task_id: str) -> Document:
-        document = self.get_document_for_user(document_id=document_id, owner_id=owner_id)
+    def attach_processing_task(
+        self, *, document_id: int, workspace_id: int, task_id: str
+    ) -> Document:
+        document = self.get_document_for_workspace(
+            document_id=document_id, workspace_id=workspace_id
+        )
         if document is None:
-            raise ValueError(f"Document {document_id} not found for user {owner_id}")
+            raise ValueError(f"Document {document_id} not found for workspace {workspace_id}")
 
         document.processing_task_id = task_id
         document.status = DOCUMENT_STATUS_QUEUED
@@ -83,6 +94,50 @@ class RAGService:
         self.db.refresh(document)
         return document
 
+    def list_documents_for_workspace(self, *, workspace_id: int) -> List[Document]:
+        stmt = (
+            select(Document)
+            .where(Document.workspace_id == workspace_id)
+            .order_by(Document.created_at.desc())
+        )
+        return list(self.db.execute(stmt).scalars().all())
+
+    def get_document_for_workspace(
+        self, *, document_id: int, workspace_id: int
+    ) -> Optional[Document]:
+        stmt = select(Document).where(
+            Document.id == document_id,
+            Document.workspace_id == workspace_id,
+        )
+        return self.db.execute(stmt).scalar_one_or_none()
+
+    def get_document_by_task_id_for_workspace(
+        self, *, task_id: str, workspace_id: int
+    ) -> Optional[Document]:
+        stmt = select(Document).where(
+            Document.processing_task_id == task_id,
+            Document.workspace_id == workspace_id,
+        )
+        return self.db.execute(stmt).scalar_one_or_none()
+
+    def delete_document(self, *, document_id: int, workspace_id: int) -> Optional[Document]:
+        document = self.get_document_for_workspace(
+            document_id=document_id, workspace_id=workspace_id
+        )
+        if document is None:
+            return None
+        self.db.delete(document)
+        self.db.commit()
+        return document
+
+    def has_ready_documents(self, *, workspace_id: int) -> bool:
+        stmt = select(func.count(Document.id)).where(
+            Document.workspace_id == workspace_id,
+            Document.status == DOCUMENT_STATUS_READY,
+        )
+        return bool(self.db.scalar(stmt))
+
+    # Compatibility aliases used by older call sites/tests during Phase 2 transition
     def list_documents_for_user(self, *, owner_id: int) -> List[Document]:
         stmt = (
             select(Document)
@@ -106,21 +161,6 @@ class RAGService:
             Document.owner_id == owner_id,
         )
         return self.db.execute(stmt).scalar_one_or_none()
-
-    def delete_document(self, *, document_id: int, owner_id: int) -> Optional[Document]:
-        document = self.get_document_for_user(document_id=document_id, owner_id=owner_id)
-        if document is None:
-            return None
-        self.db.delete(document)
-        self.db.commit()
-        return document
-
-    def has_ready_documents(self, *, owner_id: int) -> bool:
-        stmt = select(func.count(Document.id)).where(
-            Document.owner_id == owner_id,
-            Document.status == DOCUMENT_STATUS_READY,
-        )
-        return bool(self.db.scalar(stmt))
 
     def mark_document_processing(
         self, *, document_id: int, task_id: Optional[str] = None
@@ -150,10 +190,14 @@ class RAGService:
             document.processing_task_id = task_id
         self.db.commit()
 
-    def requeue_document(self, *, document_id: int, owner_id: int, task_id: str) -> Document:
-        document = self.get_document_for_user(document_id=document_id, owner_id=owner_id)
+    def requeue_document(
+        self, *, document_id: int, workspace_id: int, task_id: str
+    ) -> Document:
+        document = self.get_document_for_workspace(
+            document_id=document_id, workspace_id=workspace_id
+        )
         if document is None:
-            raise ValueError(f"Document {document_id} not found for user {owner_id}")
+            raise ValueError(f"Document {document_id} not found for workspace {workspace_id}")
 
         document.status = DOCUMENT_STATUS_QUEUED
         document.processing_task_id = task_id
@@ -221,23 +265,28 @@ class RAGService:
         return document
 
     async def retrieve_relevant_chunks(
-        self, *, query: str, owner_id: int, top_k: int = 3
+        self, *, query: str, workspace_id: int, top_k: int = 3, owner_id: Optional[int] = None
     ) -> List[DocumentChunk]:
         """Retrieve the most relevant document chunks and rerank them when available."""
-        if not self.has_ready_documents(owner_id=owner_id):
+        if not self.has_ready_documents(workspace_id=workspace_id):
             return []
 
         query_embeddings = await self.get_embeddings([query])
         query_vector = query_embeddings[0]
         recall_k = top_k * 3
 
+        filters = [
+            Document.workspace_id == workspace_id,
+            Document.status == DOCUMENT_STATUS_READY,
+        ]
+        # owner_id retained only for transitional callers; workspace is the tenancy boundary.
+        if owner_id is not None:
+            filters.append(Document.owner_id == owner_id)
+
         stmt = (
             select(DocumentChunk)
             .join(Document, DocumentChunk.document_id == Document.id)
-            .where(
-                Document.owner_id == owner_id,
-                Document.status == DOCUMENT_STATUS_READY,
-            )
+            .where(*filters)
             .order_by(DocumentChunk.embedding.cosine_distance(query_vector))
             .limit(recall_k)
         )

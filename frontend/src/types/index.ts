@@ -126,3 +126,19 @@ export interface LLMConfig {
   model_name?: string
   api_key?: string
 }
+
+export interface Workspace {
+  id: number
+  name: string
+  slug: string
+  created_by_id: number
+  is_active: boolean
+  role: string
+  created_at: string
+  updated_at: string
+}
+
+export interface WorkspaceCreate {
+  name: string
+  slug?: string
+}

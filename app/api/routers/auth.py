@@ -100,6 +100,9 @@ async def login_access_token(
             code=1005, msg="Incorrect email or password", status_code=status.HTTP_401_UNAUTHORIZED
         )
 
+    if not user.is_active:
+        raise AppException(code=1006, msg="Inactive user", status_code=status.HTTP_400_BAD_REQUEST)
+
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
     # JWT "sub" (subject) holds the user identifier

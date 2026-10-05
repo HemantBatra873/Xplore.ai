@@ -16,6 +16,7 @@ from app.models.document import (
 )
 from app.models.user import User
 from app.services.rag_service import RAGService
+from app.services.workspace_service import WorkspaceService
 
 _owner_counter = 99000
 
@@ -42,6 +43,20 @@ def _ensure_test_users_exist(db):
                 )
             )
     db.commit()
+    for uid in range(99001, _MAX_TEST_USER_ID + 1):
+        user = db.get(User, uid)
+        if user is not None and user.default_workspace_id is None:
+            WorkspaceService.create_personal_workspace(db, user)
+
+
+def _ws(db, owner_id: int) -> int:
+    user = db.get(User, owner_id)
+    if user is None:
+        raise ValueError(f"User {owner_id} not found")
+    if user.default_workspace_id is None:
+        WorkspaceService.create_personal_workspace(db, user)
+        db.refresh(user)
+    return user.default_workspace_id
 
 
 @pytest.fixture(autouse=True)
@@ -60,7 +75,12 @@ class TestRAGDocumentCreate:
     def test_create_document_record(self, db_session):
         owner = _next_owner()
         svc = RAGService(db_session)
-        doc = svc.create_document_record(filename="test.txt", content="hello world", owner_id=owner)
+        doc = svc.create_document_record(
+            filename="test.txt",
+            content="hello world",
+            owner_id=owner,
+            workspace_id=_ws(db_session, owner),
+        )
         assert doc.id is not None
         assert doc.filename == "test.txt"
         assert doc.status == DOCUMENT_STATUS_QUEUED
@@ -69,25 +89,35 @@ class TestRAGDocumentCreate:
     def test_attach_processing_task(self, db_session):
         owner = _next_owner()
         svc = RAGService(db_session)
-        doc = svc.create_document_record(filename="a.txt", content="c", owner_id=owner)
-        updated = svc.attach_processing_task(document_id=doc.id, owner_id=owner, task_id="task-123")
+        doc = svc.create_document_record(
+            filename="a.txt", content="c", owner_id=owner, workspace_id=_ws(db_session, owner)
+        )
+        updated = svc.attach_processing_task(
+            document_id=doc.id, workspace_id=_ws(db_session, owner), task_id="task-123"
+        )
         assert updated.processing_task_id == "task-123"
         assert updated.status == DOCUMENT_STATUS_QUEUED
 
     def test_attach_processing_task_wrong_owner_raises(self, db_session):
         owner = _next_owner()
+        other = _next_owner()
         svc = RAGService(db_session)
-        doc = svc.create_document_record(filename="a.txt", content="c", owner_id=owner)
+        doc = svc.create_document_record(
+            filename="a.txt", content="c", owner_id=owner, workspace_id=_ws(db_session, owner)
+        )
         with pytest.raises(ValueError):
-            svc.attach_processing_task(document_id=doc.id, owner_id=99999, task_id="task-x")
+            svc.attach_processing_task(
+                document_id=doc.id, workspace_id=_ws(db_session, other), task_id="task-x"
+            )
 
 
 class TestRAGDocumentQuery:
     def test_list_documents_for_user(self, db_session):
         owner = _next_owner()
         svc = RAGService(db_session)
-        svc.create_document_record(filename="a.txt", content="a", owner_id=owner)
-        svc.create_document_record(filename="b.txt", content="b", owner_id=owner)
+        ws = _ws(db_session, owner)
+        svc.create_document_record(filename="a.txt", content="a", owner_id=owner, workspace_id=ws)
+        svc.create_document_record(filename="b.txt", content="b", owner_id=owner, workspace_id=ws)
         docs = svc.list_documents_for_user(owner_id=owner)
         assert len(docs) == 2
 
@@ -95,8 +125,18 @@ class TestRAGDocumentQuery:
         owner_a = _next_owner()
         owner_b = _next_owner()
         svc = RAGService(db_session)
-        svc.create_document_record(filename="user1.txt", content="1", owner_id=owner_a)
-        svc.create_document_record(filename="user2.txt", content="2", owner_id=owner_b)
+        svc.create_document_record(
+            filename="user1.txt",
+            content="1",
+            owner_id=owner_a,
+            workspace_id=_ws(db_session, owner_a),
+        )
+        svc.create_document_record(
+            filename="user2.txt",
+            content="2",
+            owner_id=owner_b,
+            workspace_id=_ws(db_session, owner_b),
+        )
         assert len(svc.list_documents_for_user(owner_id=owner_a)) == 1
         assert len(svc.list_documents_for_user(owner_id=owner_b)) == 1
 
@@ -108,7 +148,9 @@ class TestRAGDocumentQuery:
     def test_get_document_for_user(self, db_session):
         owner = _next_owner()
         svc = RAGService(db_session)
-        doc = svc.create_document_record(filename="f.txt", content="c", owner_id=owner)
+        doc = svc.create_document_record(
+            filename="f.txt", content="c", owner_id=owner, workspace_id=_ws(db_session, owner)
+        )
         found = svc.get_document_for_user(document_id=doc.id, owner_id=owner)
         assert found is not None
         assert found.filename == "f.txt"
@@ -121,8 +163,12 @@ class TestRAGDocumentQuery:
     def test_get_document_by_task_id(self, db_session):
         owner = _next_owner()
         svc = RAGService(db_session)
-        doc = svc.create_document_record(filename="t.txt", content="c", owner_id=owner)
-        svc.attach_processing_task(document_id=doc.id, owner_id=owner, task_id="celery-abc")
+        doc = svc.create_document_record(
+            filename="t.txt", content="c", owner_id=owner, workspace_id=_ws(db_session, owner)
+        )
+        svc.attach_processing_task(
+            document_id=doc.id, workspace_id=_ws(db_session, owner), task_id="celery-abc"
+        )
         found = svc.get_document_by_task_id_for_user(task_id="celery-abc", owner_id=owner)
         assert found is not None
         assert found.id == doc.id
@@ -130,22 +176,28 @@ class TestRAGDocumentQuery:
     def test_has_ready_documents_false_initially(self, db_session):
         owner = _next_owner()
         svc = RAGService(db_session)
-        svc.create_document_record(filename="q.txt", content="q", owner_id=owner)
-        assert svc.has_ready_documents(owner_id=owner) is False
+        svc.create_document_record(
+            filename="q.txt", content="q", owner_id=owner, workspace_id=_ws(db_session, owner)
+        )
+        assert svc.has_ready_documents(workspace_id=_ws(db_session, owner)) is False
 
 
 class TestRAGDocumentStatusTransitions:
     def test_mark_document_processing(self, db_session):
         owner = _next_owner()
         svc = RAGService(db_session)
-        doc = svc.create_document_record(filename="p.txt", content="p", owner_id=owner)
+        doc = svc.create_document_record(
+            filename="p.txt", content="p", owner_id=owner, workspace_id=_ws(db_session, owner)
+        )
         updated = svc.mark_document_processing(document_id=doc.id)
         assert updated.status == DOCUMENT_STATUS_PROCESSING
 
     def test_mark_document_failed(self, db_session):
         owner = _next_owner()
         svc = RAGService(db_session)
-        doc = svc.create_document_record(filename="f.txt", content="f", owner_id=owner)
+        doc = svc.create_document_record(
+            filename="f.txt", content="f", owner_id=owner, workspace_id=_ws(db_session, owner)
+        )
         svc.mark_document_failed(document_id=doc.id, error_message="embedding error")
         db_session.refresh(doc)
         assert doc.status == DOCUMENT_STATUS_FAILED
@@ -154,25 +206,36 @@ class TestRAGDocumentStatusTransitions:
     def test_requeue_document(self, db_session):
         owner = _next_owner()
         svc = RAGService(db_session)
-        doc = svc.create_document_record(filename="r.txt", content="r", owner_id=owner)
-        updated = svc.requeue_document(document_id=doc.id, owner_id=owner, task_id="retry-1")
+        doc = svc.create_document_record(
+            filename="r.txt", content="r", owner_id=owner, workspace_id=_ws(db_session, owner)
+        )
+        updated = svc.requeue_document(
+            document_id=doc.id, workspace_id=_ws(db_session, owner), task_id="retry-1"
+        )
         assert updated.status == DOCUMENT_STATUS_QUEUED
         assert updated.processing_task_id == "retry-1"
         assert updated.error_message is None
 
     def test_requeue_document_wrong_owner_raises(self, db_session):
         owner = _next_owner()
+        other = _next_owner()
         svc = RAGService(db_session)
-        doc = svc.create_document_record(filename="r2.txt", content="r2", owner_id=owner)
+        doc = svc.create_document_record(
+            filename="r2.txt", content="r2", owner_id=owner, workspace_id=_ws(db_session, owner)
+        )
         with pytest.raises(ValueError):
-            svc.requeue_document(document_id=doc.id, owner_id=99999, task_id="retry-x")
+            svc.requeue_document(
+                document_id=doc.id, workspace_id=_ws(db_session, other), task_id="retry-x"
+            )
 
 
 class TestRAGDocumentProcessing:
     def test_process_document_empty_content(self, db_session):
         owner = _next_owner()
         svc = RAGService(db_session)
-        doc = svc.create_document_record(filename="empty.txt", content="", owner_id=owner)
+        doc = svc.create_document_record(
+            filename="empty.txt", content="", owner_id=owner, workspace_id=_ws(db_session, owner)
+        )
         processed = asyncio.run(svc.process_document(document_id=doc.id))
         assert processed.status == DOCUMENT_STATUS_READY
         assert processed.chunks_count == 0
@@ -181,7 +244,9 @@ class TestRAGDocumentProcessing:
         owner = _next_owner()
         svc = RAGService(db_session)
         content = "Artificial intelligence is a branch of computer science.\nIt aims to build systems that mimic human intelligence."
-        doc = svc.create_document_record(filename="ai.txt", content=content, owner_id=owner)
+        doc = svc.create_document_record(
+            filename="ai.txt", content=content, owner_id=owner, workspace_id=_ws(db_session, owner)
+        )
 
         async def fake_embeddings(texts):
             return [[0.1] * 1024 for _ in texts]

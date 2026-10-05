@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_active_user, get_db
+from app.api.deps import get_db, get_workspace_access
 from app.models.llm_call_log import LLMCallLog
-from app.models.user import User
 from app.schemas.observability import LLMCallLogOut, LLMStatsResponse
 from app.services.llm_observability_service import get_llm_overview_stats
+from app.services.workspace_service import WorkspaceAccess
 
 router = APIRouter()
 
@@ -15,14 +15,13 @@ router = APIRouter()
 async def get_llm_stats(
     days: int = Query(7, ge=1, le=30, description="Number of recent days to include"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    access: WorkspaceAccess = Depends(get_workspace_access),
 ):
     """
-    Return LLM call statistics for the current user.
-    Superusers receive global statistics.
+    Return LLM call statistics scoped to the current workspace.
     """
-    scoped_user_id = None if current_user.is_superuser else current_user.id
-    return get_llm_overview_stats(db, user_id=scoped_user_id, days=days)
+    workspace_id = access.workspace.id
+    return get_llm_overview_stats(db, workspace_id=workspace_id, days=days)
 
 
 @router.get("/llm-calls", response_model=list[LLMCallLogOut], summary="List recent LLM calls")
@@ -30,13 +29,15 @@ async def list_llm_calls(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(20, ge=1, le=100, description="Maximum number of recent logs to return"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    access: WorkspaceAccess = Depends(get_workspace_access),
 ):
-    stmt = select(LLMCallLog)
-    if not current_user.is_superuser:
-        stmt = stmt.where(LLMCallLog.user_id == current_user.id)
-
-    stmt = stmt.order_by(LLMCallLog.created_at.desc()).offset(skip).limit(limit)
+    stmt = (
+        select(LLMCallLog)
+        .where(LLMCallLog.workspace_id == access.workspace.id)
+        .order_by(LLMCallLog.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
     logs = list(db.scalars(stmt).all())
     return [
         LLMCallLogOut(

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { WorkspaceProvider } from '@/contexts/WorkspaceContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { ProtectedRoute, PublicRoute } from '@/components/auth/ProtectedRoute'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
@@ -18,69 +19,71 @@ function App() {
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
-          <ErrorBoundary>
-            <Routes>
-              <Route path="/" element={<Navigate to="/chat" replace />} />
-              <Route path="/setup" element={<SetupPage />} />
-              <Route
-                path="/auth/login"
-                element={
-                  <PublicRoute>
-                    <LoginPage />
-                  </PublicRoute>
-                }
-              />
-              <Route
-                path="/auth/register"
-                element={
-                  <PublicRoute>
-                    <RegisterPage />
-                  </PublicRoute>
-                }
-              />
-              <Route
-                path="/chat"
-                element={
-                  <ProtectedRoute>
-                    <ChatPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/knowledge"
-                element={
-                  <ProtectedRoute>
-                    <KnowledgePage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/tasks"
-                element={
-                  <ProtectedRoute>
-                    <TasksPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/observability"
-                element={
-                  <ProtectedRoute>
-                    <ObservabilityPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/settings"
-                element={
-                  <ProtectedRoute>
-                    <SettingsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/health" element={<HealthPage />} />
-            </Routes>
-          </ErrorBoundary>
+          <WorkspaceProvider>
+            <ErrorBoundary>
+              <Routes>
+                <Route path="/" element={<Navigate to="/chat" replace />} />
+                <Route path="/setup" element={<SetupPage />} />
+                <Route
+                  path="/auth/login"
+                  element={
+                    <PublicRoute>
+                      <LoginPage />
+                    </PublicRoute>
+                  }
+                />
+                <Route
+                  path="/auth/register"
+                  element={
+                    <PublicRoute>
+                      <RegisterPage />
+                    </PublicRoute>
+                  }
+                />
+                <Route
+                  path="/chat"
+                  element={
+                    <ProtectedRoute>
+                      <ChatPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/knowledge"
+                  element={
+                    <ProtectedRoute>
+                      <KnowledgePage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/tasks"
+                  element={
+                    <ProtectedRoute>
+                      <TasksPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/observability"
+                  element={
+                    <ProtectedRoute>
+                      <ObservabilityPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <ProtectedRoute>
+                      <SettingsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/health" element={<HealthPage />} />
+              </Routes>
+            </ErrorBoundary>
+          </WorkspaceProvider>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

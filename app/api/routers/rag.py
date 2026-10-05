@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_active_user, get_db
+from app.api.deps import get_db, get_workspace_access
+from app.models.user import User
 from app.schemas.rag import DocumentResponse, RAGQueryRequest, RAGQueryResponse
 from app.services.llm_observability_service import (
     create_llm_call_log,
@@ -14,6 +15,7 @@ from app.services.llm_observability_service import (
 )
 from app.services.llm_service import get_llm_client
 from app.services.rag_service import RAGService, append_session_message, load_session_history
+from app.services.workspace_service import WorkspaceAccess
 from app.utils.file_parser import get_supported_extensions, parse_file
 from app.worker.tasks import process_document_task
 
@@ -21,6 +23,10 @@ router = APIRouter()
 
 SUPPORTED_EXTENSIONS = get_supported_extensions()
 SUPPORTED_EXT_TEXT = ", ".join(SUPPORTED_EXTENSIONS)
+
+
+def _current_user(db: Session, access: WorkspaceAccess) -> User:
+    return db.get(User, access.membership.user_id)
 
 
 @router.post(
@@ -33,11 +39,14 @@ SUPPORTED_EXT_TEXT = ", ".join(SUPPORTED_EXTENSIONS)
 async def upload_document(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    access: WorkspaceAccess = Depends(get_workspace_access),
 ):
     """
     Upload a document, store extracted text, then process chunking and embeddings asynchronously.
     """
+    current_user = _current_user(db, access)
+    workspace_id = access.workspace.id
+
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided.")
 
@@ -71,11 +80,12 @@ async def upload_document(
             file_type=parsed.file_type,
             content=parsed.plain_text,
             owner_id=current_user.id,
+            workspace_id=workspace_id,
         )
         task = process_document_task.delay(doc.id)
         doc = rag_service.attach_processing_task(
             document_id=doc.id,
-            owner_id=current_user.id,
+            workspace_id=workspace_id,
             task_id=task.id,
         )
         return doc
@@ -88,14 +98,15 @@ async def upload_document(
 @router.get(
     "/documents",
     response_model=list[DocumentResponse],
-    summary="List the current user documents",
+    summary="List documents in the current workspace",
     tags=["RAG"],
 )
 async def list_documents(
-    db: Session = Depends(get_db), current_user=Depends(get_current_active_user)
+    db: Session = Depends(get_db),
+    access: WorkspaceAccess = Depends(get_workspace_access),
 ):
     rag_service = RAGService(db)
-    return rag_service.list_documents_for_user(owner_id=current_user.id)
+    return rag_service.list_documents_for_workspace(workspace_id=access.workspace.id)
 
 
 @router.get(
@@ -105,10 +116,14 @@ async def list_documents(
     tags=["RAG"],
 )
 async def get_document(
-    document_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)
+    document_id: int,
+    db: Session = Depends(get_db),
+    access: WorkspaceAccess = Depends(get_workspace_access),
 ):
     rag_service = RAGService(db)
-    document = rag_service.get_document_for_user(document_id=document_id, owner_id=current_user.id)
+    document = rag_service.get_document_for_workspace(
+        document_id=document_id, workspace_id=access.workspace.id
+    )
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found.")
     return document
@@ -120,10 +135,14 @@ async def get_document(
     tags=["RAG"],
 )
 async def delete_document(
-    document_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)
+    document_id: int,
+    db: Session = Depends(get_db),
+    access: WorkspaceAccess = Depends(get_workspace_access),
 ):
     rag_service = RAGService(db)
-    document = rag_service.delete_document(document_id=document_id, owner_id=current_user.id)
+    document = rag_service.delete_document(
+        document_id=document_id, workspace_id=access.workspace.id
+    )
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found.")
     return JSONResponse(
@@ -137,13 +156,16 @@ async def delete_document(
 async def query_knowledge_base(
     request: RAGQueryRequest,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    access: WorkspaceAccess = Depends(get_workspace_access),
 ):
     """
     1. Embed the user query
     2. Retrieve the most similar document chunks with pgvector (top_k)
     3. Assemble a prompt and ask the LLM for an answer
     """
+    current_user = _current_user(db, access)
+    workspace_id = access.workspace.id
+
     if not request.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
 
@@ -152,7 +174,7 @@ async def query_knowledge_base(
     try:
         chunks = await rag_service.retrieve_relevant_chunks(
             query=request.query,
-            owner_id=current_user.id,
+            workspace_id=workspace_id,
             top_k=request.top_k,
         )
 
@@ -206,6 +228,7 @@ async def query_knowledge_base(
         create_llm_call_log(
             db,
             user_id=current_user.id,
+            workspace_id=workspace_id,
             endpoint="/api/v1/rag/query",
             prompt=request.query,
             response=response_text,
@@ -225,6 +248,7 @@ async def query_knowledge_base(
         create_llm_call_log(
             db,
             user_id=current_user.id,
+            workspace_id=workspace_id,
             endpoint="/api/v1/rag/query",
             prompt=request.query,
             response=None,
@@ -243,15 +267,18 @@ async def query_knowledge_base(
 async def query_knowledge_base_stream(
     request: RAGQueryRequest,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    access: WorkspaceAccess = Depends(get_workspace_access),
 ):
+    current_user = _current_user(db, access)
+    workspace_id = access.workspace.id
+
     if not request.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
 
     rag_service = RAGService(db)
     chunks = await rag_service.retrieve_relevant_chunks(
         query=request.query,
-        owner_id=current_user.id,
+        workspace_id=workspace_id,
         top_k=request.top_k,
     )
 
