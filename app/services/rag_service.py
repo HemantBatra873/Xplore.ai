@@ -1,11 +1,12 @@
 import asyncio
 import json
+from dataclasses import dataclass
 from typing import List, Optional
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from openai import AsyncOpenAI
 from redis.asyncio import Redis
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, literal_column, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -18,6 +19,7 @@ from app.models.document import (
     Document,
     DocumentChunk,
 )
+from app.models.knowledge_base import KnowledgeBase
 
 try:
     from sentence_transformers import CrossEncoder
@@ -28,6 +30,18 @@ except ImportError:
     _reranker = None
 
 _embedding_client = None
+
+RRF_K = 60
+
+
+@dataclass
+class RetrievalHit:
+    chunk: DocumentChunk
+    document: Document
+    knowledge_base: Optional[KnowledgeBase]
+    score: float
+    vector_score: Optional[float] = None
+    keyword_score: Optional[float] = None
 
 
 def _get_embedding_client() -> AsyncOpenAI:
@@ -62,11 +76,13 @@ class RAGService:
         content: str,
         owner_id: int,
         workspace_id: int,
+        knowledge_base_id: int,
         file_type: str = "txt",
     ) -> Document:
         document = Document(
             owner_id=owner_id,
             workspace_id=workspace_id,
+            knowledge_base_id=knowledge_base_id,
             filename=filename,
             file_type=file_type,
             content=content,
@@ -111,6 +127,29 @@ class RAGService:
         )
         return self.db.execute(stmt).scalar_one_or_none()
 
+    def list_documents_for_knowledge_base(
+        self, *, workspace_id: int, knowledge_base_id: int
+    ) -> List[Document]:
+        stmt = (
+            select(Document)
+            .where(
+                Document.workspace_id == workspace_id,
+                Document.knowledge_base_id == knowledge_base_id,
+            )
+            .order_by(Document.created_at.desc())
+        )
+        return list(self.db.execute(stmt).scalars().all())
+
+    def get_document_for_knowledge_base(
+        self, *, document_id: int, workspace_id: int, knowledge_base_id: int
+    ) -> Optional[Document]:
+        stmt = select(Document).where(
+            Document.id == document_id,
+            Document.workspace_id == workspace_id,
+            Document.knowledge_base_id == knowledge_base_id,
+        )
+        return self.db.execute(stmt).scalar_one_or_none()
+
     def get_document_by_task_id_for_workspace(
         self, *, task_id: str, workspace_id: int
     ) -> Optional[Document]:
@@ -130,11 +169,15 @@ class RAGService:
         self.db.commit()
         return document
 
-    def has_ready_documents(self, *, workspace_id: int) -> bool:
+    def has_ready_documents(
+        self, *, workspace_id: int, knowledge_base_id: Optional[int] = None
+    ) -> bool:
         stmt = select(func.count(Document.id)).where(
             Document.workspace_id == workspace_id,
             Document.status == DOCUMENT_STATUS_READY,
         )
+        if knowledge_base_id is not None:
+            stmt = stmt.where(Document.knowledge_base_id == knowledge_base_id)
         return bool(self.db.scalar(stmt))
 
     # Compatibility aliases used by older call sites/tests during Phase 2 transition
@@ -264,54 +307,197 @@ class RAGService:
         self.db.refresh(document)
         return document
 
-    async def retrieve_relevant_chunks(
-        self, *, query: str, workspace_id: int, top_k: int = 3, owner_id: Optional[int] = None
-    ) -> List[DocumentChunk]:
-        """Retrieve the most relevant document chunks and rerank them when available."""
-        if not self.has_ready_documents(workspace_id=workspace_id):
-            return []
-
-        query_embeddings = await self.get_embeddings([query])
-        query_vector = query_embeddings[0]
-        recall_k = top_k * 3
-
+    def _document_chunk_filters(
+        self,
+        *,
+        workspace_id: int,
+        knowledge_base_id: Optional[int] = None,
+        owner_id: Optional[int] = None,
+    ) -> list:
         filters = [
             Document.workspace_id == workspace_id,
             Document.status == DOCUMENT_STATUS_READY,
         ]
-        # owner_id retained only for transitional callers; workspace is the tenancy boundary.
+        if knowledge_base_id is not None:
+            filters.append(Document.knowledge_base_id == knowledge_base_id)
         if owner_id is not None:
             filters.append(Document.owner_id == owner_id)
+        return filters
 
+    def _reciprocal_rank_fusion(
+        self, ranked_chunk_ids: list[list[int]]
+    ) -> list[tuple[int, float]]:
+        scores: dict[int, float] = {}
+        for ranked in ranked_chunk_ids:
+            for rank, chunk_id in enumerate(ranked, start=1):
+                scores[chunk_id] = scores.get(chunk_id, 0.0) + 1.0 / (RRF_K + rank)
+        return sorted(scores.items(), key=lambda item: item[1], reverse=True)
+
+    async def _vector_search_candidates(
+        self,
+        *,
+        query_vector: list[float],
+        filters: list,
+        limit: int,
+    ) -> list[tuple[DocumentChunk, Document, Optional[KnowledgeBase], float]]:
+        distance_expr = DocumentChunk.embedding.cosine_distance(query_vector)
         stmt = (
-            select(DocumentChunk)
+            select(DocumentChunk, Document, KnowledgeBase, distance_expr.label("distance"))
             .join(Document, DocumentChunk.document_id == Document.id)
+            .outerjoin(KnowledgeBase, Document.knowledge_base_id == KnowledgeBase.id)
             .where(*filters)
-            .order_by(DocumentChunk.embedding.cosine_distance(query_vector))
-            .limit(recall_k)
+            .order_by(distance_expr)
+            .limit(limit)
         )
+        rows = self.db.execute(stmt).all()
+        results: list[tuple[DocumentChunk, Document, Optional[KnowledgeBase], float]] = []
+        for chunk, document, kb, distance in rows:
+            dist = float(distance) if distance is not None else 1.0
+            vector_score = max(0.0, 1.0 - dist)
+            results.append((chunk, document, kb, vector_score))
+        return results
 
-        result = self.db.execute(stmt)
-        candidates = result.scalars().all()
-        if not candidates:
+    def _keyword_search_candidates(
+        self,
+        *,
+        query: str,
+        filters: list,
+        limit: int,
+    ) -> list[tuple[DocumentChunk, Document, Optional[KnowledgeBase], float]]:
+        tsq = func.plainto_tsquery("english", query)
+        content_tsv = literal_column("document_chunks.content_tsv")
+        rank_expr = func.ts_rank(content_tsv, tsq).label("keyword_score")
+        stmt = (
+            select(DocumentChunk, Document, KnowledgeBase, rank_expr)
+            .join(Document, DocumentChunk.document_id == Document.id)
+            .outerjoin(KnowledgeBase, Document.knowledge_base_id == KnowledgeBase.id)
+            .where(*filters, content_tsv.bool_op("@@")(tsq))
+            .order_by(rank_expr.desc())
+            .limit(limit)
+        )
+        rows = self.db.execute(stmt).all()
+        return [
+            (chunk, document, kb, float(keyword_score) if keyword_score is not None else 0.0)
+            for chunk, document, kb, keyword_score in rows
+        ]
+
+    async def retrieve_with_citations(
+        self,
+        *,
+        query: str,
+        workspace_id: int,
+        top_k: int = 3,
+        knowledge_base_id: Optional[int] = None,
+        owner_id: Optional[int] = None,
+        enable_rerank: Optional[bool] = None,
+        enable_hybrid: Optional[bool] = None,
+    ) -> List[RetrievalHit]:
+        if not self.has_ready_documents(
+            workspace_id=workspace_id, knowledge_base_id=knowledge_base_id
+        ):
             return []
 
-        reranker = get_reranker()
-        if reranker is None:
+        query_embeddings = await self.get_embeddings([query])
+        query_vector = query_embeddings[0]
+        filters = self._document_chunk_filters(
+            workspace_id=workspace_id,
+            knowledge_base_id=knowledge_base_id,
+            owner_id=owner_id,
+        )
+
+        vector_limit = settings.RAG_VECTOR_CANDIDATES
+        vector_rows = await self._vector_search_candidates(
+            query_vector=query_vector, filters=filters, limit=vector_limit
+        )
+        vector_ranked = [row[0].id for row in vector_rows]
+
+        keyword_rows: list[tuple[DocumentChunk, Document, Optional[KnowledgeBase], float]] = []
+        keyword_ranked: list[int] = []
+        use_hybrid = enable_hybrid is not False and settings.RAG_ENABLE_HYBRID
+        dialect = self.db.get_bind().dialect.name
+        if use_hybrid and dialect == "postgresql":
+            try:
+                keyword_rows = self._keyword_search_candidates(
+                    query=query,
+                    filters=filters,
+                    limit=settings.RAG_KEYWORD_CANDIDATES,
+                )
+                keyword_ranked = [row[0].id for row in keyword_rows]
+            except Exception as exc:
+                logger.warning(f"Hybrid keyword search failed, using vector-only: {exc}")
+
+        rank_lists = [vector_ranked]
+        if keyword_ranked:
+            rank_lists.append(keyword_ranked)
+        fused = self._reciprocal_rank_fusion(rank_lists)
+
+        meta: dict[int, tuple[DocumentChunk, Document, Optional[KnowledgeBase], Optional[float], Optional[float]]] = {}
+        for chunk, document, kb, vector_score in vector_rows:
+            meta[chunk.id] = (chunk, document, kb, vector_score, None)
+        for chunk, document, kb, keyword_score in keyword_rows:
+            if chunk.id in meta:
+                existing = meta[chunk.id]
+                meta[chunk.id] = (existing[0], existing[1], existing[2], existing[3], keyword_score)
+            else:
+                meta[chunk.id] = (chunk, document, kb, None, keyword_score)
+
+        recall_k = max(top_k * 3, top_k)
+        fused_ids = [chunk_id for chunk_id, _ in fused[:recall_k]]
+        if not fused_ids:
+            return []
+
+        candidates: list[RetrievalHit] = []
+        for chunk_id, rrf_score in fused[:recall_k]:
+            if chunk_id not in meta:
+                continue
+            chunk, document, kb, vector_score, keyword_score = meta[chunk_id]
+            candidates.append(
+                RetrievalHit(
+                    chunk=chunk,
+                    document=document,
+                    knowledge_base=kb,
+                    score=rrf_score,
+                    vector_score=vector_score,
+                    keyword_score=keyword_score,
+                )
+            )
+
+        do_rerank = enable_rerank is not False and settings.RAG_ENABLE_RERANK
+        reranker = get_reranker() if do_rerank else None
+        if reranker is not None and candidates:
+            logger.info(f"==> Reranking {len(candidates)} candidate chunks with BGE-Reranker...")
+            pairs = [[query, hit.chunk.content] for hit in candidates]
+            rerank_scores = await self._predict_rerank_scores(reranker, pairs)
+            for hit, rerank_score in zip(candidates, rerank_scores):
+                hit.score = float(rerank_score)
+            candidates.sort(key=lambda h: h.score, reverse=True)
+        elif do_rerank and reranker is None:
             logger.warning("sentence-transformers is unavailable, so reranking is skipped.")
-            return candidates[:top_k]
 
-        logger.info(f"==> Reranking {len(candidates)} candidate chunks with BGE-Reranker...")
-        pairs = [[query, chunk.content] for chunk in candidates]
-        scores = await self._predict_rerank_scores(reranker, pairs)
+        return candidates[:top_k]
 
-        scored_candidates = list(zip(candidates, scores))
-        scored_candidates.sort(key=lambda item: item[1], reverse=True)
-
-        for rank, (chunk, score) in enumerate(scored_candidates[:top_k], start=1):
-            logger.info(f"Rerank rank {rank} (score: {score:.4f}): {chunk.content[:60]}...")
-
-        return [item[0] for item in scored_candidates[:top_k]]
+    async def retrieve_relevant_chunks(
+        self,
+        *,
+        query: str,
+        workspace_id: int,
+        top_k: int = 3,
+        owner_id: Optional[int] = None,
+        knowledge_base_id: Optional[int] = None,
+        enable_rerank: Optional[bool] = None,
+        enable_hybrid: Optional[bool] = None,
+    ) -> List[DocumentChunk]:
+        """Retrieve the most relevant document chunks (compat wrapper around retrieve_with_citations)."""
+        hits = await self.retrieve_with_citations(
+            query=query,
+            workspace_id=workspace_id,
+            top_k=top_k,
+            knowledge_base_id=knowledge_base_id,
+            owner_id=owner_id,
+            enable_rerank=enable_rerank,
+            enable_hybrid=enable_hybrid,
+        )
+        return [hit.chunk for hit in hits]
 
     async def _predict_rerank_scores(self, reranker, pairs: list[list[str]]) -> list[float]:
         loop = asyncio.get_running_loop()

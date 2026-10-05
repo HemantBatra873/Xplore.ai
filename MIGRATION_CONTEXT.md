@@ -2,186 +2,201 @@
 
 ## Phase 1 status: PASS WITH FIXES
 
-Phase 1 identity cleanup is complete at repository root `C:\Users\HemantBatra\Desktop\Code\Personal\Xplore.ai`. See the Phase 1 section history in git for the full Phase 1 audit record. Summary: Xplore.ai branding, English product surface, `xplore_token` / `xplore_user`, `xplore_db`, and no nested `fastapi_starter` package.
+Phase 1 identity cleanup is complete at repository root `C:\Users\HemantBatra\Desktop\Code\Personal\Xplore.ai`. Summary: Xplore.ai branding, English product surface, `xplore_token` / `xplore_user`, `xplore_db`, and no nested `fastapi_starter` package.
 
 ---
 
 ## Phase 2 status: PASS WITH FIXES
 
-Phase 2 implements the **Workspace & Membership foundation** only. Agents, Conversations, Knowledge Bases/Collections, integrations, and RAG redesign were not implemented.
+Phase 2 implements the **Workspace & Membership foundation**. Tenancy key is `workspace_id` via `get_workspace_access` / `X-Workspace-Id` (default workspace fallback). Roles: owner > admin > member. Migration `d8e4f1a2b3c4`. See Phase 2 section history for full API/security detail.
+
+---
+
+## Phase 3 status: PASS WITH FIXES
+
+Phase 3 evolves documents/RAG into a workspace-scoped **Knowledge** system with knowledge bases, SQL-side filtered retrieval, optional hybrid search + rerank, and citation metadata. Conversations, Agents, tools framework, and integrations were **not** implemented.
 
 ### Architecture
 
-**New models / entities**
+**KnowledgeBase design**
 
-- `Workspace` (`app/models/workspace.py`): `id`, `name`, `slug` (unique), `created_by_id`, `is_active`, `created_at`, `updated_at`
-- `WorkspaceMembership`: `workspace_id`, `user_id`, `role`, timestamps, unique `(workspace_id, user_id)`
-- `User.default_workspace_id` → preferred workspace for clients that omit `X-Workspace-Id`
-- Resource tenancy columns:
-  - `Task.workspace_id` (required)
-  - `Document.workspace_id` (nullable for legacy orphans; set for normal use)
-  - `LLMCallLog.workspace_id` (nullable)
+- Model: `app/models/knowledge_base.py` — `KnowledgeBase`
+- Fields: `id`, `workspace_id` (CASCADE), `name`, `description`, `created_by_id`, `created_at`, `updated_at`
+- Constraint: unique `(workspace_id, name)`
+- Default KB: every workspace gets **"General"** on create (and via migration backfill)
+- Permissions: `knowledge:read|write` (member+), `knowledge:admin` (admin+/delete KB)
 
-**Relationships**
+**Document / Chunk relationships**
 
 ```text
-User
- ├── default_workspace_id → Workspace
- ├── WorkspaceMembership* → Workspace
- └── created Workspace*
 Workspace
- ├── Membership* (user + role)
- ├── Task*
- ├── Document*
- └── LLMCallLog*
+ └── KnowledgeBase (1..n)
+      └── Document (workspace_id + knowledge_base_id)
+           └── DocumentChunk (CASCADE on document delete)
 ```
 
-Creator attribution (`Task.owner_id`, `Document.owner_id`, `LLMCallLog.user_id`) is preserved. **Tenancy boundary is `workspace_id`.**
+- Documents are workspace-scoped and belong to a knowledge base (`knowledge_base_id` required after migration when backfill succeeds)
+- `owner_id` retained for audit only; isolation is `workspace_id` + membership
+- Statuses: `queued` → `processing` → `ready` | `failed` (`error_message` on failure)
+- Deleting a document cascades chunks; deleting a KB cascades documents (workspace must keep ≥1 KB)
+- Ingestion pipeline unchanged: upload → Celery `process_document_task` → chunk + embed
 
-**Role / permission design**
+**Retrieval architecture**
 
-- Roles: `owner` > `admin` > `member` (rank-based in `app/services/workspace_permissions.py`)
-- Permission keys: `workspace:read|update|delete`, `members:read|invite|manage|remove`, `resources:read|write`
-- New permissions can be added to `PERMISSIONS` without rewriting models
+- Entry: `RAGService.retrieve_with_citations(...)`
+- Filters applied **in SQL** before ranking: `Document.workspace_id`, `Document.status == ready`, optional `knowledge_base_id`
+- Vector: pgvector cosine distance (HNSW index on PostgreSQL)
+- Hybrid (optional, PostgreSQL only): keyword via generated `content_tsv` + `plainto_tsquery` / `ts_rank`, fused with vector via Reciprocal Rank Fusion (`RRF_K=60`)
+- SQLite / keyword failure → vector-only (logged warning)
+- Config: `RAG_ENABLE_HYBRID`, `RAG_ENABLE_RERANK`, `RAG_VECTOR_CANDIDATES`, `RAG_KEYWORD_CANDIDATES`
 
-**Workspace ownership strategy**
+**Reranking architecture**
 
-- Every new user gets a personal workspace + `owner` membership (`UserService` → `WorkspaceService.create_personal_workspace`)
-- Existing users are backfilled by Alembic migration to a personal workspace named `{username}'s Workspace` with slug `user-{id}-{username}`
-- Existing tasks/documents/LLM logs for a user are attached to that user's personal workspace
-- Additional workspaces can be created; members can be invited with roles
+- Optional stage after candidate fusion
+- Uses existing BGE CrossEncoder (`sentence_transformers`) when installed and `RAG_ENABLE_RERANK` / request flag allow it
+- If unavailable or disabled, RRF/vector scores are used unchanged — system still works
+
+**Citation / source design**
+
+- `RetrievalHit` carries chunk, document, knowledge_base, score, vector_score, keyword_score
+- API `CitationSource`: `chunk_id`, `document_id`, `knowledge_base_id`, `knowledge_base_name`, `filename`, `chunk_index`, `excerpt`, scores
+- Returned by `/api/v1/knowledge-bases/{id}/query` and `/api/v1/rag/query` (plus stream variants)
+- No persistent Conversation citation UX yet (Phase 4)
 
 ### Database
 
-**Migration file created**
+**Migration created**
 
-- `alembic/versions/d8e4f1a2b3c4_add_workspace_foundation.py`
-- `down_revision`: `b35f62ae79bf` (previous head)
+- `alembic/versions/e9f5a2b3c4d5_add_knowledge_bases_and_retrieval_indexes.py`
+- `down_revision`: `d8e4f1a2b3c4`
 
-**Backfill strategy**
+**Schema changes**
 
-1. Create `workspaces` + `workspace_memberships`
-2. Add nullable `workspace_id` / `default_workspace_id` columns
-3. For each existing user: insert personal workspace, owner membership, set `default_workspace_id`, update owned tasks/documents/logs
-4. Make `tasks.workspace_id` NOT NULL
+- Table `knowledge_bases` + indexes
+- Column `documents.knowledge_base_id` FK → `knowledge_bases.id` ON DELETE CASCADE
+- Generated column `document_chunks.content_tsv` + GIN index
+- HNSW index `ix_document_chunks_embedding_hnsw` on `embedding vector_cosine_ops`
+- Index on `document_chunks.document_id` (IF NOT EXISTS)
 
-**Assumptions**
+**Data migration / backfill**
 
-- Alembic is the schema authority; `Base.metadata.create_all()` at startup remains for local convenience but must not replace migrations
-- Migration SQL uses `RETURNING` (PostgreSQL). Production/CI DB is PostgreSQL/`xplore_db`
+1. For each workspace: insert default KB `General`
+2. Attach documents with matching `workspace_id` to that KB
+3. Orphan documents: prefer owner's default-workspace KB, else first available KB; also set `workspace_id` when null
+4. If no null `knowledge_base_id` remain → set column NOT NULL
 
 **Migration execution in this environment**
 
-- **BLOCKED** — no usable host Python; Docker Desktop engine not running. Migration was authored and reviewed but not applied to a live database in this session.
+- **BLOCKED** — host Python is Microsoft Store stub only; Docker Desktop Linux engine not running. Migration authored/reviewed, not applied to a live DB in this session.
 
 ### API
 
-**New endpoints** (`/api/v1/workspaces`)
+**New endpoints** (`/api/v1/knowledge-bases`)
 
 | Method | Path | Notes |
 |--------|------|--------|
-| POST | `/` | Create workspace (caller becomes owner) |
-| GET | `/` | List caller's workspaces (+ role) |
-| GET | `/{id}` | Get workspace (members only) |
-| PATCH | `/{id}` | Update name/slug/active (admin/owner) |
-| GET | `/{id}/members` | List members |
-| POST | `/{id}/members` | Invite member (admin+) |
-| PATCH | `/{id}/members/{user_id}` | Change role |
-| DELETE | `/{id}/members/{user_id}` | Remove member |
+| GET | `/` | List KBs in current workspace |
+| POST | `/` | Create KB |
+| GET | `/{kb_id}` | Get KB |
+| PATCH | `/{kb_id}` | Update name/description |
+| DELETE | `/{kb_id}` | Delete KB (admin+; cannot delete last) |
+| GET | `/{kb_id}/documents` | List documents |
+| POST | `/{kb_id}/documents/upload` | Upload + enqueue processing |
+| GET | `/{kb_id}/documents/{doc_id}` | Document status |
+| DELETE | `/{kb_id}/documents/{doc_id}` | Delete document + chunks |
+| POST | `/{kb_id}/documents/{doc_id}/reprocess` | Requeue processing |
+| POST | `/{kb_id}/query` | KB-scoped RAG + citations |
+| POST | `/{kb_id}/query/stream` | SSE variant |
 
-**Changed endpoints**
+**Changed endpoints** (`/api/v1/rag`)
 
-- Tasks, RAG, Worker, Chat, Observability now resolve workspace via `get_workspace_access`
-- Clients should send header **`X-Workspace-Id`**
-- If omitted, the user's **default workspace** is used (compatibility)
-- Login rejects inactive users (`code=1006`)
-- `GET /users/{id}` restricted: non-superusers may only read themselves
-- Chat/tasks/worker routes use `get_current_active_user` (inactive blocked)
+- Upload assigns default workspace KB
+- List/query/stream honor workspace + optional `knowledge_base_id`
+- Query responses include structured `sources` (+ legacy `source_chunks`)
+- Permissions use `knowledge:read|write`
 
 **Authorization behavior**
 
-- Centralized in `WorkspaceService.get_workspace_access` + `WorkspaceAccess.require_permission` + `workspace_permissions.py`
-- Non-members receive 403 for workspace APIs and when spoofing `X-Workspace-Id`
-- Resource queries filter by `workspace_id` (not only `owner_id`)
-
-**Breaking changes**
-
-- Soft break: clients that relied on pure user-owned isolation still work via default workspace + optional header
-- Task responses now include `workspace_id`
-- Document responses may include `workspace_id`
-- Cross-user `GET /users/{id}` now 403 for non-superusers
+- All knowledge routes use `get_workspace_access` + permission keys
+- KB lookups always filter `KnowledgeBase.workspace_id == access.workspace.id` (spoofed KB id → 404)
+- Document get/delete/reprocess require matching `workspace_id` **and** `knowledge_base_id`
+- Cross-workspace `X-Workspace-Id` spoof → 403 (Phase 2)
 
 ### Frontend
 
-- `WorkspaceContext` + `xplore_workspace` localStorage key
-- Axios + SSE fetch attach `X-Workspace-Id`
-- Navbar shows current workspace and a select to switch
-- `workspaceService.ts` for list/get/create
-- Mock mode covers `/workspaces/`
-- Auth keys remain `xplore_token` / `xplore_user`
+- `KnowledgePage`: KB list/create/delete + documents for selected KB (status, upload, delete, failure message)
+- `KnowledgePanel` (chat sidebar): KB selector, upload, query with citation excerpts
+- `knowledgeService.ts` + mock handlers for `/knowledge-bases`
+- Types: `KnowledgeBase`, `CitationSource`, `KnowledgeQueryResult`; documents include `knowledge_base_id`
+- Workspace header `X-Workspace-Id` unchanged
 
 ### Security
 
-- Membership-gated workspace access
-- IDOR mitigations: workspace-scoped tasks/docs/worker status; user profile self-or-superuser; inactive login blocked
-- Spoofed `X-Workspace-Id` for a non-member workspace → 403
-- Celery still processes by `document_id` after authorized enqueue (unchanged trust model for workers)
+| Check | How validated |
+|-------|----------------|
+| User A cannot retrieve User B workspace docs | Authored: `tests/test_knowledge.py`, `TestRAGRetrievalIsolation.test_retrieve_empty_for_other_workspace` |
+| Cannot retrieve another inaccessible KB | Authored: KB listing/filter tests; retrieve with wrong `knowledge_base_id` returns empty |
+| Spoofed document/KB IDs cannot bypass workspace auth | Authored: foreign KB get/upload → 403/404; spoofed doc get → 403/404 |
+| Retrieval never returns other-workspace chunks | SQL filters on `workspace_id` + `status=ready`; isolation tests authored |
+| Upload cannot target foreign KB | Authored: `test_cannot_upload_document_to_foreign_knowledge_base` |
+| Deleted documents excluded from retrieval | CASCADE delete + `has_ready_documents` / retrieve tests authored |
 
-### Files
-
-**Added**
-
-- `app/models/workspace.py`
-- `app/services/workspace_service.py`
-- `app/services/workspace_permissions.py`
-- `app/schemas/workspace.py`
-- `app/api/routers/workspaces.py`
-- `alembic/versions/d8e4f1a2b3c4_add_workspace_foundation.py`
-- `tests/test_workspaces.py`
-- `frontend/src/contexts/WorkspaceContext.tsx`
-- `frontend/src/services/workspaceService.ts`
-
-**Modified (important)**
-
-- Models: `user.py`, `task.py`, `document.py`, `llm_call_log.py`, `models/__init__.py`
-- Auth/deps: `app/api/deps.py`, `app/api/routers/auth.py`, `users.py`
-- Resource routers: `tasks.py`, `rag.py`, `worker.py`, `chat.py`, `observability.py`
-- Services: `task_service.py`, `rag_service.py`, `user_service.py`, `llm_service.py`, `mcp_service.py`, `llm_observability_service.py`
-- `app/main.py`, `scripts/seed_demo_data.py`
-- Tests: `test_rag.py`, `test_rag_service.py`
-- Frontend: `App.tsx`, `api.ts`, `Navbar.tsx`, `types/index.ts`, `chatService.ts`, `ragService.ts`, `mock/data.ts`
-- Docs: `docs/changes.md`, this file
+**Note:** Backend pytest was **not executed** in this environment (see Validation). Security claims are based on code paths + authored tests, not a green CI run.
 
 ### Validation
 
 | Command / check | Result | Notes |
 |-----------------|--------|-------|
-| Architecture inspection | PASS | Models/auth/ownership surveyed before coding |
-| Alembic migration authored | PASS | File present; head chain `b35f62ae79bf` → `d8e4f1a2b3c4` |
-| `alembic upgrade head` | BLOCKED | No Python + Docker engine down |
-| `python -m pytest -q` | BLOCKED | Host Python is Microsoft Store stub only |
-| Workspace security tests added | PASS (authored) | `tests/test_workspaces.py` covers isolation, roles, inactive login, default workspace |
-| Existing API tests updated for workspace | PASS (authored) | RAG service/HTTP tests updated for `workspace_id` |
-| `npm run build` (frontend) | PASS | `tsc -b && vite build` succeeded after workspace UI |
-| `npm run lint` | NOT RE-RUN | Previously failed on pre-existing eslint rules; not used as Phase 2 gate |
-| Docker Compose / app startup | BLOCKED | Docker Desktop Linux engine not running |
+| Architecture inspection (models, RAG, workers, UI, migrations) | PASS | Completed before/during implementation |
+| Alembic revision `e9f5a2b3c4d5` authored | PASS | Chain `d8e4f1a2b3c4` → `e9f5a2b3c4d5` |
+| `alembic upgrade head` | BLOCKED | No usable host Python; Docker engine down |
+| `python -m pytest -q` | BLOCKED | Microsoft Store Python stub only |
+| `python -m pytest tests/test_knowledge.py tests/test_rag_service.py -q` | BLOCKED | Same as above |
+| Knowledge/workspace isolation tests authored | PASS (authored) | `tests/test_knowledge.py`, retrieval isolation in `tests/test_rag_service.py` |
+| `npm run build` (frontend) | PASS | `tsc -b && vite build` succeeded |
+| `npm run lint` (frontend) | FAIL | Pre-existing eslint rule debt; not used as Phase 3 gate |
+| Docker Compose / live migration | BLOCKED | Docker Desktop Linux engine not running |
 
 ### Known issues
 
-- Backend tests and live migration were not executed in this environment
-- Frontend eslint debt remains (pre-existing)
-- Documents with historical `owner_id IS NULL` may still have null `workspace_id` after migration
-- Worker Celery task does not re-check membership inside the worker process (trusted enqueue path)
-- `Base.metadata.create_all()` still runs at API startup in addition to Alembic
+- Backend tests and Alembic upgrade were not executed live in this session
+- Hybrid search and HNSW require PostgreSQL + pgvector; SQLite tests use vector-only / create_all without `content_tsv`
+- Reranking requires `sentence-transformers` + model download; gracefully skipped when missing
+- Worker still trusts authorized enqueue by `document_id` (no re-check of membership inside Celery)
+- `Base.metadata.create_all()` still runs at API startup alongside Alembic
+- Frontend eslint failures remain (pre-existing)
+- Full chat citation UX / persistent Conversations deferred to Phase 4
 
-### Phase 3 handoff
+### Files (Phase 3)
 
-Phase 3 should build **on top of Workspace**, not replace it:
+**Added**
 
-1. **Tenancy key**: all new Knowledge / Conversation / Agent tables must include `workspace_id` FK and use `get_workspace_access` / `require_permission`
-2. **Do not reintroduce user-only ownership** as the isolation boundary; keep `owner_id`/`created_by` for audit only
-3. **Header contract**: frontend already sends `X-Workspace-Id` from `xplore_workspace`; new APIs should honor the same dependency
-4. **Roles**: extend `PERMISSIONS` in `workspace_permissions.py` (e.g. `agents:manage`, `knowledge:admin`) rather than hardcoding role strings in routers
-5. **Migration discipline**: add Alembic revisions after `d8e4f1a2b3c4`; run `alembic upgrade head` before relying on new columns; do not depend on `create_all` for production
-6. **Default workspace**: every user should already have `default_workspace_id` after Phase 2 migration/register; Phase 3 features can assume membership exists
-7. **Out of Phase 2 scope (still TODO)**: Knowledge Bases/Collections redesign, Conversations/Messages, Agents, tool framework expansion, external integrations, new LLM provider architecture
+- `app/models/knowledge_base.py`
+- `app/services/knowledge_service.py`
+- `app/schemas/knowledge.py`
+- `app/api/routers/knowledge.py`
+- `alembic/versions/e9f5a2b3c4d5_add_knowledge_bases_and_retrieval_indexes.py`
+- `tests/test_knowledge.py`
+- `frontend/src/services/knowledgeService.ts`
+
+**Modified (important)**
+
+- `app/models/document.py`, `app/models/__init__.py`
+- `app/services/rag_service.py`, `app/services/workspace_service.py`, `app/services/workspace_permissions.py`
+- `app/api/routers/rag.py`, `app/main.py`, `app/core/config.py`, `app/schemas/rag.py`
+- Frontend: `KnowledgePage.tsx`, `KnowledgePanel.tsx`, `types/index.ts`, `mock/data.ts`
+- Docs: `docs/changes.md`, `.env.example`, this file
+- Tests: `tests/test_rag_service.py`
+
+### Phase 4 handoff
+
+Phase 4 (Conversations / unified AI flow) should build **on** this Knowledge layer:
+
+1. **Tenancy**: Conversations/Messages must include `workspace_id`; never reintroduce user-only isolation
+2. **Retrieval contract**: call `RAGService.retrieve_with_citations(workspace_id=..., knowledge_base_id=...)` (or multi-KB list later). Do not load all workspace chunks into memory and filter in Python
+3. **Citations**: persist `CitationSource`-shaped metadata on assistant messages (chunk_id, document_id, knowledge_base_id, filename, excerpt, score). API already returns this shape for non-chat RAG
+4. **KB selection**: chat UI should let the user pick a knowledge base (or “all in workspace”); default to workspace `General` KB
+5. **Permissions**: reuse `knowledge:read` for retrieval; add conversation permissions to `PERMISSIONS` rather than hardcoding roles
+6. **Do not redesign RAG**: hybrid/RRF/rerank knobs and Celery ingest should stay; Phase 4 wires them into persistent chat, not a new vector stack
+7. **Out of Phase 3 scope (still TODO)**: Conversations/Messages, Agents, configurable Tools, external integrations, new LLM provider architecture
+8. **Before relying on hybrid/HNSW in prod**: run `alembic upgrade head` on PostgreSQL and confirm `content_tsv` + HNSW indexes exist

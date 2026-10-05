@@ -1,12 +1,16 @@
 import json
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from typing import Optional
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, get_workspace_access
 from app.models.user import User
+from app.schemas.knowledge import CitationSource
 from app.schemas.rag import DocumentResponse, RAGQueryRequest, RAGQueryResponse
+from app.services.knowledge_service import KnowledgeBaseService
 from app.services.llm_observability_service import (
     create_llm_call_log,
     elapsed_ms,
@@ -14,7 +18,12 @@ from app.services.llm_observability_service import (
     start_timer,
 )
 from app.services.llm_service import get_llm_client
-from app.services.rag_service import RAGService, append_session_message, load_session_history
+from app.services.rag_service import (
+    RAGService,
+    RetrievalHit,
+    append_session_message,
+    load_session_history,
+)
 from app.services.workspace_service import WorkspaceAccess
 from app.utils.file_parser import get_supported_extensions, parse_file
 from app.worker.tasks import process_document_task
@@ -29,6 +38,27 @@ def _current_user(db: Session, access: WorkspaceAccess) -> User:
     return db.get(User, access.membership.user_id)
 
 
+def _citation_sources(hits: list[RetrievalHit]) -> list[CitationSource]:
+    sources: list[CitationSource] = []
+    for hit in hits:
+        kb_id = hit.document.knowledge_base_id or 0
+        sources.append(
+            CitationSource(
+                chunk_id=hit.chunk.id,
+                document_id=hit.document.id,
+                knowledge_base_id=kb_id,
+                knowledge_base_name=hit.knowledge_base.name if hit.knowledge_base else None,
+                filename=hit.document.filename,
+                chunk_index=hit.chunk.chunk_index,
+                excerpt=hit.chunk.content[:500],
+                score=hit.score,
+                vector_score=hit.vector_score,
+                keyword_score=hit.keyword_score,
+            )
+        )
+    return sources
+
+
 @router.post(
     "/upload",
     response_model=DocumentResponse,
@@ -38,14 +68,26 @@ def _current_user(db: Session, access: WorkspaceAccess) -> User:
 )
 async def upload_document(
     file: UploadFile = File(...),
+    knowledge_base_id: Optional[int] = Query(default=None),
     db: Session = Depends(get_db),
     access: WorkspaceAccess = Depends(get_workspace_access),
 ):
     """
     Upload a document, store extracted text, then process chunking and embeddings asynchronously.
     """
+    access.require_permission("knowledge:write")
     current_user = _current_user(db, access)
     workspace_id = access.workspace.id
+    if knowledge_base_id is not None:
+        kb = KnowledgeBaseService.get_for_workspace(
+            db, knowledge_base_id=knowledge_base_id, workspace_id=workspace_id
+        )
+        target_kb_id = kb.id
+    else:
+        kb = KnowledgeBaseService.ensure_default_for_workspace(
+            db, workspace=access.workspace, created_by_id=current_user.id
+        )
+        target_kb_id = kb.id
 
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided.")
@@ -81,6 +123,7 @@ async def upload_document(
             content=parsed.plain_text,
             owner_id=current_user.id,
             workspace_id=workspace_id,
+            knowledge_base_id=target_kb_id,
         )
         task = process_document_task.delay(doc.id)
         doc = rag_service.attach_processing_task(
@@ -105,6 +148,8 @@ async def list_documents(
     db: Session = Depends(get_db),
     access: WorkspaceAccess = Depends(get_workspace_access),
 ):
+    access.require_permission("knowledge:read")
+    KnowledgeBaseService.ensure_default_for_workspace(db, workspace=access.workspace)
     rag_service = RAGService(db)
     return rag_service.list_documents_for_workspace(workspace_id=access.workspace.id)
 
@@ -120,6 +165,7 @@ async def get_document(
     db: Session = Depends(get_db),
     access: WorkspaceAccess = Depends(get_workspace_access),
 ):
+    access.require_permission("knowledge:read")
     rag_service = RAGService(db)
     document = rag_service.get_document_for_workspace(
         document_id=document_id, workspace_id=access.workspace.id
@@ -139,6 +185,7 @@ async def delete_document(
     db: Session = Depends(get_db),
     access: WorkspaceAccess = Depends(get_workspace_access),
 ):
+    access.require_permission("knowledge:write")
     rag_service = RAGService(db)
     document = rag_service.delete_document(
         document_id=document_id, workspace_id=access.workspace.id
@@ -163,32 +210,45 @@ async def query_knowledge_base(
     2. Retrieve the most similar document chunks with pgvector (top_k)
     3. Assemble a prompt and ask the LLM for an answer
     """
+    access.require_permission("knowledge:read")
     current_user = _current_user(db, access)
     workspace_id = access.workspace.id
+    KnowledgeBaseService.ensure_default_for_workspace(db, workspace=access.workspace)
 
     if not request.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
 
+    if request.knowledge_base_id is not None:
+        KnowledgeBaseService.get_for_workspace(
+            db,
+            knowledge_base_id=request.knowledge_base_id,
+            workspace_id=workspace_id,
+        )
+
     rag_service = RAGService(db)
     started_at = start_timer()
     try:
-        chunks = await rag_service.retrieve_relevant_chunks(
+        hits = await rag_service.retrieve_with_citations(
             query=request.query,
             workspace_id=workspace_id,
             top_k=request.top_k,
+            knowledge_base_id=request.knowledge_base_id,
+            enable_rerank=request.enable_rerank,
+            enable_hybrid=request.enable_hybrid,
         )
 
-        if not chunks:
+        if not hits:
             return RAGQueryResponse(
                 query=request.query,
                 answer="No processed documents match this query. Upload a document and wait for processing to finish.",
+                sources=[],
                 source_chunks=[],
             )
 
-        # 3. Assemble prompt
+        sources = _citation_sources(hits)
         context_texts = []
-        for i, chunk in enumerate(chunks, 1):
-            context_texts.append(f"[Source passage {i}]:\n{chunk.content}")
+        for i, hit in enumerate(hits, 1):
+            context_texts.append(f"[Source passage {i}]:\n{hit.chunk.content}")
 
         context_str = "\n\n".join(context_texts)
 
@@ -241,7 +301,10 @@ async def query_knowledge_base(
         )
 
         return RAGQueryResponse(
-            query=request.query, answer=response_text, source_chunks=[c.content for c in chunks]
+            query=request.query,
+            answer=response_text,
+            sources=sources,
+            source_chunks=[h.chunk.content for h in hits],
         )
 
     except Exception as e:
@@ -269,25 +332,38 @@ async def query_knowledge_base_stream(
     db: Session = Depends(get_db),
     access: WorkspaceAccess = Depends(get_workspace_access),
 ):
+    access.require_permission("knowledge:read")
     current_user = _current_user(db, access)
     workspace_id = access.workspace.id
+    KnowledgeBaseService.ensure_default_for_workspace(db, workspace=access.workspace)
 
     if not request.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
 
+    if request.knowledge_base_id is not None:
+        KnowledgeBaseService.get_for_workspace(
+            db,
+            knowledge_base_id=request.knowledge_base_id,
+            workspace_id=workspace_id,
+        )
+
     rag_service = RAGService(db)
-    chunks = await rag_service.retrieve_relevant_chunks(
+    hits = await rag_service.retrieve_with_citations(
         query=request.query,
         workspace_id=workspace_id,
         top_k=request.top_k,
+        knowledge_base_id=request.knowledge_base_id,
+        enable_rerank=request.enable_rerank,
+        enable_hybrid=request.enable_hybrid,
     )
 
-    if not chunks:
+    if not hits:
 
         async def _empty():
             data = json.dumps(
                 {
                     "content": "No processed documents match this query. Upload a document and wait for processing to finish.",
+                    "sources": [],
                     "source_chunks": [],
                 },
                 ensure_ascii=False,
@@ -297,7 +373,10 @@ async def query_knowledge_base_stream(
 
         return StreamingResponse(_empty(), media_type="text/event-stream")
 
-    context_texts = [f"[Source passage {i}]:\n{chunk.content}" for i, chunk in enumerate(chunks, 1)]
+    sources = _citation_sources(hits)
+    context_texts = [
+        f"[Source passage {i}]:\n{hit.chunk.content}" for i, hit in enumerate(hits, 1)
+    ]
     context_str = "\n\n".join(context_texts)
     system_prompt = (
         "You are a careful question-answering assistant. Answer using the reference material below.\n"
@@ -305,7 +384,7 @@ async def query_knowledge_base_stream(
         f"=== Reference material ===\n{context_str}\n=== End reference material ==="
     )
 
-    source_chunk_contents = [c.content for c in chunks]
+    source_chunk_contents = [h.chunk.content for h in hits]
 
     async def _stream():
         llm_info = get_llm_client(current_user)
@@ -344,7 +423,13 @@ async def query_knowledge_base_stream(
                     current_user.id, request.session_id, "assistant", full_response
                 )
 
-            data = json.dumps({"source_chunks": source_chunk_contents}, ensure_ascii=False)
+            data = json.dumps(
+                {
+                    "sources": [s.model_dump() for s in sources],
+                    "source_chunks": source_chunk_contents,
+                },
+                ensure_ascii=False,
+            )
             yield f"data: {data}\n\n"
             yield "data: [DONE]\n\n"
         except Exception as e:

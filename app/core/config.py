@@ -49,6 +49,10 @@ class Settings(BaseSettings):
 
     # RAG
     EMBEDDING_DIMENSION: int = 1024
+    RAG_ENABLE_HYBRID: bool = True
+    RAG_ENABLE_RERANK: bool = True
+    RAG_VECTOR_CANDIDATES: int = 20
+    RAG_KEYWORD_CANDIDATES: int = 20
 
     @model_validator(mode="after")
     def _auto_enable_mock(self) -> "Settings":

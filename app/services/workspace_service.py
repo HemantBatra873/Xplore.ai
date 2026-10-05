@@ -82,6 +82,13 @@ class WorkspaceService:
         db.add(membership)
 
         user.default_workspace_id = workspace.id
+
+        from app.services.knowledge_service import KnowledgeBaseService
+
+        KnowledgeBaseService.create_default_for_workspace(
+            db, workspace=workspace, created_by_id=user.id, commit=False
+        )
+
         if commit:
             db.commit()
             db.refresh(workspace)
@@ -129,6 +136,12 @@ class WorkspaceService:
         )
         if user.default_workspace_id is None:
             user.default_workspace_id = workspace.id
+
+        from app.services.knowledge_service import KnowledgeBaseService
+
+        KnowledgeBaseService.create_default_for_workspace(
+            db, workspace=workspace, created_by_id=user.id, commit=False
+        )
         db.commit()
         db.refresh(workspace)
         return workspace

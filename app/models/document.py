@@ -24,6 +24,9 @@ class Document(Base):
     workspace_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("workspaces.id"), nullable=True, index=True
     )
+    knowledge_base_id: Mapped[int] = mapped_column(
+        ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     file_type: Mapped[str] = mapped_column(String(16), default="txt", nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
@@ -42,10 +45,10 @@ class Document(Base):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    # One document has many chunks
     chunks = relationship("DocumentChunk", back_populates="document", cascade="all, delete-orphan")
     owner = relationship("User", backref="documents")
     workspace = relationship("Workspace", backref="documents")
+    knowledge_base = relationship("KnowledgeBase", back_populates="documents")
 
 
 class DocumentChunk(Base):
@@ -53,7 +56,7 @@ class DocumentChunk(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     document_id: Mapped[int] = mapped_column(
-        ForeignKey("documents.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True
     )
     chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)

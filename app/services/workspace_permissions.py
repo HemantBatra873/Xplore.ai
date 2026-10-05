@@ -27,6 +27,9 @@ PERMISSIONS = {
     "members:remove": ROLE_RANK[WORKSPACE_ROLE_ADMIN],
     "resources:read": ROLE_RANK[WORKSPACE_ROLE_MEMBER],
     "resources:write": ROLE_RANK[WORKSPACE_ROLE_MEMBER],
+    "knowledge:read": ROLE_RANK[WORKSPACE_ROLE_MEMBER],
+    "knowledge:write": ROLE_RANK[WORKSPACE_ROLE_MEMBER],
+    "knowledge:admin": ROLE_RANK[WORKSPACE_ROLE_ADMIN],
 }
 
 

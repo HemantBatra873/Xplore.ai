@@ -1,5 +1,15 @@
 # Change Log
 
+## Phase 3: Knowledge / RAG Evolution
+
+- Added workspace-scoped `KnowledgeBase` model, default "General" KB per workspace, and document `knowledge_base_id`.
+- Alembic migration `e9f5a2b3c4d5` creates knowledge bases, backfills documents, adds HNSW + `content_tsv` GIN indexes.
+- Extended RAG retrieval with optional KB filtering, PostgreSQL hybrid search (tsvector + RRF), and optional BGE reranking.
+- Added `/api/v1/knowledge-bases` CRUD, document upload/query/stream endpoints with citation sources.
+- Updated `/api/v1/rag` upload/query to assign default KB, optional KB filter, and return structured citations.
+- Frontend Knowledge page/panel: select/create/delete knowledge bases, upload documents, show processing/failure status.
+- Added `tests/test_knowledge.py` and retrieval isolation cases in `tests/test_rag_service.py`.
+
 ## Phase 2: Workspace & Identity Architecture
 
 - Added `Workspace` and `WorkspaceMembership` models with owner/admin/member roles and centralized permission helpers.
@@ -23,4 +33,4 @@
 - Preserved current chat, task, document, RAG, background processing, authentication, mock mode, and observability behavior.
 - Added `MIGRATION_CONTEXT.md` as the migration handoff record.
 
-Phase 3+ features (agents, knowledge redesign, conversations, integrations) remain out of scope.
+Phase 4+ features (agents, conversations, integrations, unified chat) remain out of scope until their phase.

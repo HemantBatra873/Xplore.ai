@@ -47,14 +47,20 @@ def seed():
         db.flush()
         logger.info(f"Created demo user (id={demo_user.id}, password={DEMO_PASSWORD})")
 
+        from app.services.knowledge_service import KnowledgeBaseService
         from app.services.workspace_service import WorkspaceService
 
         workspace = WorkspaceService.create_personal_workspace(db, demo_user, commit=False)
         logger.info(f"Created personal workspace (id={workspace.id})")
 
+        default_kb = KnowledgeBaseService.create_default_for_workspace(
+            db, workspace=workspace, created_by_id=demo_user.id, commit=False
+        )
+
         doc = Document(
             owner_id=demo_user.id,
             workspace_id=workspace.id,
+            knowledge_base_id=default_kb.id,
             filename="welcome.txt",
             file_type="txt",
             content=(

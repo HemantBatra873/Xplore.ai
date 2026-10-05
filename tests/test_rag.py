@@ -2,6 +2,8 @@ from types import SimpleNamespace
 
 from app.models.document import DOCUMENT_STATUS_QUEUED, DOCUMENT_STATUS_READY, Document
 from app.models.user import User
+from app.models.workspace import Workspace
+from app.services.knowledge_service import KnowledgeBaseService
 from app.services.rag_service import RAGService
 
 
@@ -29,6 +31,12 @@ def _default_workspace_id(db_session, user_id: int) -> int:
     assert user is not None
     assert user.default_workspace_id is not None
     return user.default_workspace_id
+
+
+def _default_kb_id(db_session, workspace_id: int) -> int:
+    workspace = db_session.get(Workspace, workspace_id)
+    kb = KnowledgeBaseService.ensure_default_for_workspace(db_session, workspace=workspace)
+    return kb.id
 
 
 def test_upload_document_creates_async_job(client, monkeypatch, db_session):
@@ -77,6 +85,7 @@ def test_query_knowledge_base_uses_current_user_scope(client, monkeypatch, db_se
     ready_doc = Document(
         owner_id=user_id,
         workspace_id=workspace_id,
+        knowledge_base_id=_default_kb_id(db_session, workspace_id),
         filename="ready.txt",
         content="rag content",
         status=DOCUMENT_STATUS_READY,
@@ -85,11 +94,37 @@ def test_query_knowledge_base_uses_current_user_scope(client, monkeypatch, db_se
     db_session.add(ready_doc)
     db_session.commit()
 
-    async def fake_retrieve(_self, *, query=None, workspace_id, top_k=None, owner_id=None):
+    async def fake_retrieve(
+        _self,
+        *,
+        query=None,
+        workspace_id=None,
+        top_k=None,
+        knowledge_base_id=None,
+        owner_id=None,
+        enable_rerank=None,
+        enable_hybrid=None,
+    ):
         assert workspace_id == _default_workspace_id(db_session, user_id)
         assert query == "What is in my knowledge base?"
         assert top_k == 2
-        return [SimpleNamespace(content="A knowledge passage that belongs only to the current user")]
+        chunk = SimpleNamespace(id=1, content="A knowledge passage that belongs only to the current user", chunk_index=0)
+        document = SimpleNamespace(
+            id=ready_doc.id,
+            filename="ready.txt",
+            knowledge_base_id=ready_doc.knowledge_base_id,
+        )
+        kb = SimpleNamespace(id=ready_doc.knowledge_base_id, name="General")
+        return [
+            SimpleNamespace(
+                chunk=chunk,
+                document=document,
+                knowledge_base=kb,
+                score=0.9,
+                vector_score=0.9,
+                keyword_score=None,
+            )
+        ]
 
     def fake_get_llm_client(user=None):
         class DummyClient:
@@ -110,7 +145,7 @@ def test_query_knowledge_base_uses_current_user_scope(client, monkeypatch, db_se
 
         return SimpleNamespace(client=DummyClient(), model_name="test-model")
 
-    monkeypatch.setattr(RAGService, "retrieve_relevant_chunks", fake_retrieve)
+    monkeypatch.setattr(RAGService, "retrieve_with_citations", fake_retrieve)
     monkeypatch.setattr("app.api.routers.rag.get_llm_client", fake_get_llm_client)
 
     response = client.post(
@@ -135,6 +170,7 @@ def test_worker_requeues_owned_document_and_returns_task_status(client, monkeypa
     document = Document(
         owner_id=user_id,
         workspace_id=workspace_id,
+        knowledge_base_id=_default_kb_id(db_session, workspace_id),
         filename="retry.txt",
         content="retry me",
         status=DOCUMENT_STATUS_READY,
@@ -300,11 +336,20 @@ def test_upload_empty_pdf(client):
 def test_rag_query_stream_returns_sse(client, monkeypatch):
     token = _create_user_and_login(client, "stream")
 
-    class FakeChunk:
-        content = "streamed reply chunk"
-
-    async def fake_retrieve(_self, *, query=None, workspace_id=None, top_k=None, owner_id=None):
-        return [FakeChunk()]
+    async def fake_retrieve(_self, **_kwargs):
+        chunk = SimpleNamespace(id=1, content="streamed reply chunk", chunk_index=0)
+        document = SimpleNamespace(id=1, filename="doc.txt", knowledge_base_id=1)
+        kb = SimpleNamespace(id=1, name="General")
+        return [
+            SimpleNamespace(
+                chunk=chunk,
+                document=document,
+                knowledge_base=kb,
+                score=0.8,
+                vector_score=0.8,
+                keyword_score=None,
+            )
+        ]
 
     async def fake_stream_create(**kwargs):
         async def gen():
@@ -325,7 +370,7 @@ def test_rag_query_stream_returns_sse(client, monkeypatch):
 
         return gen()
 
-    monkeypatch.setattr(RAGService, "retrieve_relevant_chunks", fake_retrieve)
+    monkeypatch.setattr(RAGService, "retrieve_with_citations", fake_retrieve)
     monkeypatch.setattr(
         "app.api.routers.rag.get_llm_client",
         lambda user=None: SimpleNamespace(
@@ -364,7 +409,7 @@ def test_rag_query_stream_no_chunks(client, monkeypatch, db_session):
     async def fake_retrieve_empty(*a, **kw):
         return []
 
-    monkeypatch.setattr(RAGService, "retrieve_relevant_chunks", fake_retrieve_empty)
+    monkeypatch.setattr(RAGService, "retrieve_with_citations", fake_retrieve_empty)
 
     with client.stream(
         "POST",

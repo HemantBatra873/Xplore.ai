@@ -144,10 +144,14 @@ def test_documents_are_isolated_across_workspaces(client, db_session):
     token_a, user_a = _register_and_login(client, "doc-a")
     token_b, _ = _register_and_login(client, "doc-b")
     ws_a = client.get("/api/v1/workspaces/", headers=_auth(token_a)).json()[0]
+    kb_a = client.get(
+        "/api/v1/knowledge-bases/", headers=_auth(token_a, ws_a["id"])
+    ).json()[0]
 
     doc = Document(
         owner_id=user_a["id"],
         workspace_id=ws_a["id"],
+        knowledge_base_id=kb_a["id"],
         filename="private.txt",
         content="secret",
         status=DOCUMENT_STATUS_READY,

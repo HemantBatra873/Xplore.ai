@@ -38,15 +38,46 @@ export interface SSEChunk {
   error?: string
 }
 
+export interface KnowledgeBase {
+  id: number
+  workspace_id: number
+  name: string
+  description: string | null
+  created_by_id: number | null
+  document_count: number
+  created_at: string
+  updated_at: string
+}
+
 export interface Document {
   id: number
   filename: string
   file_type: string
   status: 'queued' | 'processing' | 'ready' | 'failed'
   chunks_count: number
+  workspace_id?: number | null
+  knowledge_base_id?: number | null
   processing_task_id: string | null
   error_message: string | null
   created_at: string
+}
+
+export interface CitationSource {
+  chunk_id: number
+  document_id: number
+  knowledge_base_id: number
+  knowledge_base_name?: string | null
+  filename: string
+  chunk_index: number
+  excerpt: string
+  score?: number | null
+}
+
+export interface KnowledgeQueryResult {
+  query: string
+  answer: string
+  sources: CitationSource[]
+  source_chunks: string[]
 }
 
 export interface Task {
