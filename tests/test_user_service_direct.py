@@ -1,5 +1,5 @@
 """
-User 服务层直接调用单元测试
+Direct unit tests for the user service layer.
 """
 
 from app.schemas.user import UserCreate, UserLLMConfigUpdate

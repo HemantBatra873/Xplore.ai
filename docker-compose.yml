@@ -1,10 +1,10 @@
 services:
   # ============================
-  # 核心服务（默认启动）
+  # Core services (default profile)
   # docker compose up -d
   # ============================
 
-  # 后端 API 服务
+  # API service
   api:
     platform: linux/amd64
     build: .
@@ -14,7 +14,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/fastapi_db
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/xplore_db
       - REDIS_URL=redis://redis:6379/0
       - OLLAMA_BASE_URL=http://ollama:11434/v1
       - EMBEDDING_BASE_URL=http://ollama:11434/v1
@@ -33,7 +33,7 @@ services:
       retries: 10
       start_period: 15s
 
-  # 数据库服务
+  # PostgreSQL
   db:
     image: pgvector/pgvector:pg15
     container_name: xplore-ai-db
@@ -41,18 +41,18 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=fastapi_db
+      - POSTGRES_DB=xplore_db
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d fastapi_db"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d xplore_db"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # Redis 缓存与消息队列
+  # Redis cache and broker
   redis:
     image: redis:7-alpine
     container_name: xplore-ai-redis
@@ -67,7 +67,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # 异步任务 Worker 服务 (Celery)
+  # Celery worker
   celery_worker:
     platform: linux/amd64
     build: .
@@ -76,7 +76,7 @@ services:
     volumes:
       - .:/app
     environment:
-      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/fastapi_db
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/xplore_db
       - REDIS_URL=redis://redis:6379/0
       - OLLAMA_BASE_URL=http://ollama:11434/v1
       - EMBEDDING_BASE_URL=http://ollama:11434/v1
@@ -89,13 +89,13 @@ services:
         condition: service_healthy
 
   # ============================
-  # 可选服务 — 需显式启用 profile
-  # docker compose --profile full up -d        → 加上 Ollama
-  # docker compose --profile monitor up -d     → 加上监控
-  # docker compose --profile full --profile monitor up -d → 全部
+  # Optional services — enable via compose profiles
+  # docker compose --profile full up -d        → includes Ollama
+  # docker compose --profile monitor up -d     → includes monitoring
+  # docker compose --profile full --profile monitor up -d → everything
   # ============================
 
-  # Celery 任务监控面板
+  # Flower (Celery monitor)
   flower:
     platform: linux/amd64
     build: .
@@ -113,7 +113,7 @@ services:
       redis:
         condition: service_healthy
 
-  # 本地大模型与向量服务 (Ollama)
+  # Ollama (local LLM and embeddings)
   ollama:
     image: ollama/ollama:latest
     container_name: xplore-ai-ollama
@@ -131,7 +131,7 @@ services:
       retries: 10
       start_period: 30s
 
-  # 可观测性服务：Prometheus
+  # Prometheus
   prometheus:
     image: prom/prometheus:latest
     container_name: xplore-ai-prometheus
@@ -146,7 +146,7 @@ services:
     depends_on:
       - api
 
-  # 可观测性服务：Grafana
+  # Grafana
   grafana:
     image: grafana/grafana:latest
     container_name: xplore-ai-grafana

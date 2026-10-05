@@ -16,11 +16,11 @@ from app.worker.celery_app import celery_app
 )
 def process_document_task(self, document_id: int):
     """
-    对已上传文档执行真实的切分、Embedding 和入库流程。
-    遇到临时故障（如 Ollama 未就绪）会自动重试最多 3 次，指数退避。
+    Chunk, embed, and persist an uploaded document.
+    Retries up to 3 times with exponential backoff on transient errors (e.g. Ollama not ready).
     """
     logger.info(
-        f"==> 开始异步处理文档，文档 ID: {document_id} (attempt {self.request.retries + 1})"
+        f"==> Starting async document processing, document ID: {document_id} (attempt {self.request.retries + 1})"
     )
     db = SessionLocal()
     rag_service = RAGService(db)
@@ -36,7 +36,7 @@ def process_document_task(self, document_id: int):
                 task_id=self.request.id,
             )
         )
-        logger.info(f"==> 文档处理完成，文档 ID: {document_id}, chunks: {document.chunks_count}")
+        logger.info(f"==> Document processing finished, document ID: {document_id}, chunks: {document.chunks_count}")
         return {
             "document_id": document.id,
             "status": document.status,
@@ -50,7 +50,7 @@ def process_document_task(self, document_id: int):
             error_message=str(exc),
             task_id=self.request.id,
         )
-        logger.error(f"==> 文档处理失败，文档 ID: {document_id}, error: {exc}")
+        logger.error(f"==> Document processing failed, document ID: {document_id}, error: {exc}")
         raise
     finally:
         db.close()

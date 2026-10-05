@@ -7,7 +7,7 @@ TEST_USER_EMAIL = os.getenv("LOCUST_USER_EMAIL", "locust@example.com")
 TEST_USER_PASSWORD = os.getenv("LOCUST_USER_PASSWORD", "locustpass123")
 
 
-class FastAPIUser(HttpUser):
+class XploreUser(HttpUser):
     wait_time = between(1, 3)
 
     def on_start(self):
@@ -36,7 +36,7 @@ class FastAPIUser(HttpUser):
         if self.token:
             self.client.post(
                 f"{API_V1}/chat/",
-                json={"message": "你好，简单介绍一下你自己", "stream": False},
+                json={"message": "Hello, briefly introduce yourself.", "stream": False},
                 headers=self.headers,
             )
 

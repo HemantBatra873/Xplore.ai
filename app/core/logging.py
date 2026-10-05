@@ -37,7 +37,7 @@ class JSONFormatter(logging.Formatter):
 
 
 def setup_logging():
-    logger = logging.getLogger("fastapi_starter")
+    logger = logging.getLogger("xplore_ai")
     logger.setLevel(logging.INFO)
 
     if not logger.handlers:

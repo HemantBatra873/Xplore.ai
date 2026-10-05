@@ -73,9 +73,9 @@ def test_query_knowledge_base_uses_current_user_scope(client, monkeypatch, db_se
 
     async def fake_retrieve(_self, *, query=None, owner_id, top_k=None):
         assert owner_id == user_id
-        assert query == "我的知识库里有什么？"
+        assert query == "What is in my knowledge base?"
         assert top_k == 2
-        return [SimpleNamespace(content="只属于当前用户的知识片段")]
+        return [SimpleNamespace(content="A knowledge passage that belongs only to the current user")]
 
     def fake_get_llm_client(user=None):
         class DummyClient:
@@ -86,7 +86,7 @@ def test_query_knowledge_base_uses_current_user_scope(client, monkeypatch, db_se
                         return SimpleNamespace(
                             choices=[
                                 SimpleNamespace(
-                                    message=SimpleNamespace(content="基于当前用户文档的回答")
+                                    message=SimpleNamespace(content="Answer grounded in the current user's documents")
                                 )
                             ],
                             usage=SimpleNamespace(
@@ -102,13 +102,13 @@ def test_query_knowledge_base_uses_current_user_scope(client, monkeypatch, db_se
     response = client.post(
         "/api/v1/rag/query",
         headers={"Authorization": f"Bearer {token}"},
-        json={"query": "我的知识库里有什么？", "top_k": 2},
+        json={"query": "What is in my knowledge base?", "top_k": 2},
     )
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["answer"] == "基于当前用户文档的回答"
-    assert payload["source_chunks"] == ["只属于当前用户的知识片段"]
+    assert payload["answer"] == "Answer grounded in the current user's documents"
+    assert payload["source_chunks"] == ["A knowledge passage that belongs only to the current user"]
 
 
 def test_worker_requeues_owned_document_and_returns_task_status(client, monkeypatch, db_session):
@@ -350,4 +350,4 @@ def test_rag_query_stream_no_chunks(client, monkeypatch, db_session):
     ) as resp:
         assert resp.status_code == 200
         content = resp.read().decode("utf-8")
-        assert "暂无已处理" in content or "data:" in content
+        assert "No processed documents match this query" in content or "data:" in content

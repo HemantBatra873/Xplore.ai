@@ -140,9 +140,9 @@ async def query_knowledge_base(
     current_user=Depends(get_current_active_user),
 ):
     """
-    1. 接收用户 Query 并计算向量
-    2. 使用 pgvector 检索最相似的文档块 (top_k)
-    3. 组装 prompt，调用 LLM (Qwen2.5) 生成答案
+    1. Embed the user query
+    2. Retrieve the most similar document chunks with pgvector (top_k)
+    3. Assemble a prompt and ask the LLM for an answer
     """
     if not request.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
@@ -163,7 +163,7 @@ async def query_knowledge_base(
                 source_chunks=[],
             )
 
-        # 3. 组装 Prompt
+        # 3. Assemble prompt
         context_texts = []
         for i, chunk in enumerate(chunks, 1):
             context_texts.append(f"[Source passage {i}]:\n{chunk.content}")
@@ -193,7 +193,7 @@ async def query_knowledge_base(
         response = await llm_info.client.chat.completions.create(
             model=llm_info.model_name,
             messages=messages,
-            temperature=0.1,  # 降低 temperature 以保证 RAG 问答的稳定性
+            temperature=0.1,  # Lower temperature for more stable RAG answers
         )
         response_text = response.choices[0].message.content
         prompt_tokens, completion_tokens, total_tokens = extract_usage(response)

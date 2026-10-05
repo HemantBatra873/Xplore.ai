@@ -1,4 +1,4 @@
-# 暴露模型，方便后续 Alembic 自动发现
+# Export models for Alembic autodiscover
 from app.models.document import Document, DocumentChunk
 from app.models.llm_call_log import LLMCallLog
 from app.models.task import Task

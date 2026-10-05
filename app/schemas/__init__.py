@@ -1,1 +1,1 @@
-# 初始化 schemas 包
+# schemas package

@@ -1,5 +1,5 @@
 """
-Auth 服务层单元测试
+Auth service unit tests.
 """
 
 from app.schemas.user import UserCreate

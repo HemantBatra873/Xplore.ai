@@ -36,8 +36,8 @@ def main():
 
         # 2. Mock-authenticated browsing
         context.add_init_script(f"""
-            localStorage.setItem('agent_token', '{MOCK_TOKEN}');
-            localStorage.setItem('agent_user', '{MOCK_USER}');
+            localStorage.setItem('xplore_token', '{MOCK_TOKEN}');
+            localStorage.setItem('xplore_user', '{MOCK_USER}');
         """)
 
         # Chat page

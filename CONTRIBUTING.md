@@ -6,8 +6,8 @@ Thanks for your interest in contributing! This guide will help you get started.
 
 ```bash
 # 1. Fork and clone
-git clone https://github.com/YOUR_USERNAME/fastapi_starter.git
-cd fastapi_starter
+git clone https://github.com/YOUR_USERNAME/Xplore.ai.git
+cd Xplore.ai
 
 # 2. One-click setup
 make setup

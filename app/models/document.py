@@ -39,7 +39,7 @@ class Document(Base):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    # 一对多关系：一个文档可以被切分成多个块
+    # One document has many chunks
     chunks = relationship("DocumentChunk", back_populates="document", cascade="all, delete-orphan")
     owner = relationship("User", backref="documents")
 

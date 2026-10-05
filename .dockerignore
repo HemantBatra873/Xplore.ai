@@ -1,4 +1,4 @@
-# 忽略虚拟环境、缓存等
+# Ignore virtualenvs, caches, etc.
 venv/
 __pycache__/
 *.py[cod]
@@ -8,11 +8,11 @@ __pycache__/
 .coverage
 .env
 
-# 忽略 macOS 自动生成的文件
+# macOS metadata
 .DS_Store
 
-# 忽略 Alembic 自动生成的某些本地缓存（如有）
+# Alembic local caches (if any)
 alembic/.pytest_cache/
 
-# 忽略数据库数据挂载目录（如果本地挂载了）
+# Local database volume mount (if used)
 postgres_data/

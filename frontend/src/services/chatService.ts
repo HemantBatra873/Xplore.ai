@@ -24,7 +24,7 @@ export async function* streamChatMessage(message: string): AsyncGenerator<{
     return
   }
 
-  const token = localStorage.getItem('agent_token')
+  const token = localStorage.getItem('xplore_token')
   const baseUrl = import.meta.env.VITE_API_BASE || '/api/v1'
   const url = `${baseUrl}/chat/`
 
@@ -39,8 +39,8 @@ export async function* streamChatMessage(message: string): AsyncGenerator<{
 
   if (!response.ok) {
     if (response.status === 401) {
-      localStorage.removeItem('agent_token')
-      localStorage.removeItem('agent_user')
+      localStorage.removeItem('xplore_token')
+      localStorage.removeItem('xplore_user')
       window.location.href = '/auth/login'
       yield { error: 'Your session has expired. Please sign in again.' }
       return

@@ -11,7 +11,7 @@ class TaskService:
     @staticmethod
     def create_task(db: Session, task_in: TaskCreate, owner_id: int) -> Task:
         """
-        创建新任务
+        Create a new task.
         """
         new_task = Task(
             title=task_in.title,
@@ -27,7 +27,7 @@ class TaskService:
     @staticmethod
     def list_tasks(db: Session, owner_id: int, skip: int = 0, limit: int = 100):
         """
-        List the current user tasks列表
+        List tasks for the current user.
         """
         return (
             db.execute(
@@ -44,7 +44,7 @@ class TaskService:
     @staticmethod
     def get_task(db: Session, task_id: int, owner_id: int) -> Task:
         """
-        获取单个任务详情
+        Get a single task by id.
         """
         task = db.execute(
             select(Task).where(Task.id == task_id, Task.owner_id == owner_id)
@@ -63,7 +63,7 @@ class TaskService:
         """
         task = TaskService.get_task(db, task_id, owner_id)
 
-        # 只更新传入的非空字段
+        # Update only fields that were provided
         update_data = task_in.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(task, key, value)
@@ -75,7 +75,7 @@ class TaskService:
     @staticmethod
     def delete_task(db: Session, task_id: int, owner_id: int) -> Task:
         """
-        删除任务
+        Delete a task.
         """
         task = TaskService.get_task(db, task_id, owner_id)
         db.delete(task)

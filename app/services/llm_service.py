@@ -30,7 +30,7 @@ from app.services.llm_observability_service import (
 from app.services.mcp_service import MCPService
 from app.utils.encryption import decrypt_api_key
 
-# 全局复用一个 AsyncOpenAI 客户端 (针对未配置自有 Key 的情况)
+# Reuse a single global AsyncOpenAI client when no per-user key is configured
 _global_client = None
 
 
@@ -41,7 +41,7 @@ class LLMClientInfo:
 
 
 # ==========================================
-# MockLLMClient — 无需 API Key 的模拟客户端
+# MockLLMClient — mock client that needs no API key
 # ==========================================
 class _MockUsage:
     prompt_tokens = 10
@@ -102,7 +102,7 @@ class _MockChat:
 
 
 class MockLLMClient:
-    """模拟 LLM 客户端，返回预设回复，无需 API Key"""
+    """Mock LLM client that returns preset replies without an API key."""
 
     chat = _MockChat()
     api_key = "mock"
@@ -110,10 +110,10 @@ class MockLLMClient:
 
 def get_llm_client(user: User = None) -> LLMClientInfo:
     """
-    动态获取 LLM 客户端和模型名称。
-    优先使用用户自定义的配置（支持多租户独立 Key），若用户未配置，则回退到系统global configuration。
-    当 LLM_MOCK=true 时，返回 MockLLMClient，无需任何 API Key。
-    用户自定义 Key 解密失败时，自动降级到global configuration。
+    Resolve the LLM client and model name.
+    Prefer the user's custom config (multi-tenant keys); fall back to global settings.
+    When LLM_MOCK=true, return MockLLMClient with no API key.
+    On decrypt failure for a user key, fall back to global configuration.
     """
     if settings.LLM_MOCK:
         logger.info("==> LLM mock mode is enabled; using the mock client")
@@ -143,24 +143,24 @@ def get_llm_client(user: User = None) -> LLMClientInfo:
 
 
 # ==========================================
-# 1. 定义本地Tool函数 (模拟查询天气与系统状态)
+# 1. Local tool functions (mock weather and system status)
 # ==========================================
 def get_current_weather(location: str) -> str:
-    """模拟天气查询函数，实际中这里可以调用外部天气 API"""
-    logger.info(f"==> 执行本地Tool: 查询 {location} 的天气")
-    # 为了演示，写死几个城市的天气
+    """Mock weather lookup; a real deployment would call an external weather API."""
+    logger.info(f"==> Running local tool: weather for {location}")
+    # Demo: hard-coded weather for a few cities
     weather_data = {
         "Beijing": "Clear, 25 C, light wind",
         "Shanghai": "Cloudy, 28 C, possible showers",
         "Guangzhou": "Light rain, 26 C, humid",
     }
-    # 默认返回
+    # Default fallback
     return weather_data.get(location, f"Weather is unknown for {location}; temperature is about 20 C")
 
 
 def get_system_status() -> str:
-    """查询服务器当前的系统负载、内存与磁盘占用状态"""
-    logger.info("==> 执行本地Tool: 查询系统状态")
+    """Return current CPU, memory, and disk usage for the server."""
+    logger.info("==> Running local tool: system status")
     try:
         cpu_percent = psutil.cpu_percent(interval=0.5)
         memory = psutil.virtual_memory()
@@ -173,12 +173,12 @@ def get_system_status() -> str:
         )
         return status_info
     except Exception as e:
-        logger.error(f"获取系统状态失败: {e}")
+        logger.error(f"Failed to read system status: {e}")
         return "Unable to read system status."
 
 
 def list_tasks(db: Session, user_id: int, status: str = None) -> str:
-    logger.info(f"==> 执行本地Tool: 查询任务列表 (user_id={user_id}, status={status})")
+    logger.info(f"==> Running local tool: list tasks (user_id={user_id}, status={status})")
     try:
         stmt = select(Task).where(Task.owner_id == user_id)
         if status:
@@ -194,7 +194,7 @@ def list_tasks(db: Session, user_id: int, status: str = None) -> str:
                 lines.append(f"    Description: {t.description}")
             return "Current tasks:\n" + "\n".join(lines)
     except Exception as e:
-        logger.error(f"查询任务列表失败: {e}")
+        logger.error(f"Failed to list tasks: {e}")
         return "An error occurred while listing tasks."
 
 
@@ -222,12 +222,12 @@ def _safe_eval_node(node: ast.AST) -> float:
     if isinstance(node, ast.Constant):
         if isinstance(node.value, (int, float)):
             return node.value
-        raise ValueError(f"不支持的常量类型: {type(node.value).__name__}")
+        raise ValueError(f"Unsupported constant type: {type(node.value).__name__}")
 
     elif isinstance(node, ast.BinOp):
         op_type = type(node.op)
         if op_type not in _ALLOWED_OPS:
-            raise ValueError(f"不支持的运算符: {op_type.__name__}")
+            raise ValueError(f"Unsupported operator: {op_type.__name__}")
         left = _safe_eval_node(node.left)
         right = _safe_eval_node(node.right)
         return _ALLOWED_OPS[op_type](left, right)
@@ -235,31 +235,31 @@ def _safe_eval_node(node: ast.AST) -> float:
     elif isinstance(node, ast.UnaryOp):
         op_type = type(node.op)
         if op_type not in _ALLOWED_OPS:
-            raise ValueError(f"不支持的运算符: {op_type.__name__}")
+            raise ValueError(f"Unsupported operator: {op_type.__name__}")
         operand = _safe_eval_node(node.operand)
         return _ALLOWED_OPS[op_type](operand)
 
     elif isinstance(node, ast.Call):
         if not isinstance(node.func, ast.Name):
-            raise ValueError("只允许直接函数名调用")
+            raise ValueError("Only direct function-name calls are allowed")
         func_name = node.func.id
         if func_name not in _ALLOWED_FUNCS:
-            raise ValueError(f"不支持的函数: {func_name}")
+            raise ValueError(f"Unsupported function: {func_name}")
         args = [_safe_eval_node(arg) for arg in node.args]
         return _ALLOWED_FUNCS[func_name](*args)
 
     else:
-        raise ValueError(f"不支持的表达式类型: {type(node).__name__}")
+        raise ValueError(f"Unsupported expression type: {type(node).__name__}")
 
 
 def safe_eval(expr: str) -> float:
-    """安全计算数学表达式，使用 AST 而非 eval()"""
+    """Safely evaluate a math expression via AST instead of eval()."""
     node = ast.parse(expr.strip(), mode="eval").body
     return _safe_eval_node(node)
 
 
 def calculate(expression: str) -> str:
-    logger.info(f"==> 执行本地Tool: 计算表达式 '{expression}'")
+    logger.info(f"==> Running local tool: calculate expression '{expression}'")
     try:
         result = safe_eval(expression)
         return f"Calculation: {expression} = {result}"
@@ -267,18 +267,18 @@ def calculate(expression: str) -> str:
         return f"Calculation failed: {e}"
 
 
-# Tool Schema 与处理器已统一托管于 MCPService
-# 新增Tool时只需在 mcp_service.py 中注册即可
+# Tool schemas and handlers are centralized in MCPService
+# Register new tools in mcp_service.py only
 
 
 async def _llm_completion_with_retry(llm_client, **kwargs):
-    """LLM API 调用，带指数退避重试（应对 429 限流和临时网络问题）"""
+    """LLM API call with exponential backoff (429 rate limits and transient network errors)."""
     async for attempt in AsyncRetrying(
         retry=retry_if_exception_type((RateLimitError, APITimeoutError, APIConnectionError)),
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
         before_sleep=lambda retry_state: logger.warning(
-            f"LLM API 调用失败 (第 {retry_state.attempt_number} 次重试): "
+            f"LLM API call failed (retry {retry_state.attempt_number}): "
             f"{retry_state.outcome.exception()}"
         ),
     ):
@@ -288,7 +288,7 @@ async def _llm_completion_with_retry(llm_client, **kwargs):
 
 async def generate_chat_reply(message: str, db: Session = None, current_user_id: int = None) -> str:
     """
-    调用大语言模型生成回复 (带 Tool Calling 支持)
+    Call the LLM for a chat reply (with tool calling).
     """
     user = db.get(User, current_user_id) if db and current_user_id else None
 
@@ -299,7 +299,7 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
 
     started_at = start_timer()
 
-    # 初始对话上下文
+    # Initial conversation context
     messages = [
         {
             "role": "system",
@@ -314,10 +314,10 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
     final_reply = None
 
     try:
-        # 第一轮调用：告诉模型用户的问题，并附带Tool列表
-        logger.info("==> [Round 1] 正在请求大模型...")
+        # Round 1: send the user message with the tool list
+        logger.info("==> [Round 1] Requesting LLM...")
 
-        # 针对部分模型（如 Qwen2.5）强化 Prompt
+        # Stronger system prompt for some models (e.g. Qwen2.5)
         system_prompt = (
             "You are a helpful assistant and a personal task-management expert. "
             "When the user asks you to create a task, study plan, or schedule item, you must use the 'create_task' tool. "
@@ -341,9 +341,9 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
         total_completion_tokens += completion_tokens
         total_tokens += used_tokens
 
-        # 检查模型是否决定调用Tool
+        # Check whether the model chose to call tools
         if response_message.tool_calls:
-            logger.info("==> 模型决定调用Tool！")
+            logger.info("==> Model chose to call tools")
             messages.append(response_message)
             tool_calls_payload = serialize_tool_calls(response_message.tool_calls)
 
@@ -353,7 +353,7 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
 
                 tool_result = ""
                 if function_name == "create_task":
-                    logger.info(f"==> 模型尝试Create a task: {arguments}")
+                    logger.info(f"==> Model attempting to create task: {arguments}")
                     if db and current_user_id:
                         tool_result = await MCPService.call_tool(
                             name=function_name,
@@ -378,7 +378,7 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
                         arguments=arguments,
                     )
 
-                # 将Tool的执行结果追加到上下文中
+                # Append tool results to the context
                 messages.append(
                     {
                         "role": "tool",
@@ -388,8 +388,8 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
                     }
                 )
 
-            # 第二轮调用
-            logger.info("==> [Round 2] Tool结果已返回，正在请求大模型生成最终回答...")
+            # Round 2
+            logger.info("==> [Round 2] Tool results returned; requesting final LLM answer...")
             second_response = await _llm_completion_with_retry(
                 info.client,
                 model=info.model_name,
@@ -419,7 +419,7 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
             return final_reply
 
         else:
-            logger.info("==> 模型没有调用Tool，直接返回了回答。")
+            logger.info("==> Model replied without calling tools.")
             final_reply = response_message.content
             if db:
                 create_llm_call_log(
@@ -438,7 +438,7 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
             return final_reply
 
     except Exception as e:
-        logger.error(f"LLM API 调用失败: {str(e)}")
+        logger.error(f"LLM API call failed: {str(e)}")
         if db:
             create_llm_call_log(
                 db,
@@ -459,8 +459,8 @@ async def generate_chat_reply(message: str, db: Session = None, current_user_id:
 
 async def generate_chat_reply_stream(message: str, db: Session = None, current_user_id: int = None):
     """
-    流式调用大语言模型生成回复 (SSE)。不支持 Tool Calling，如果需要 Tool Calling 建议先判断。
-    这里为了演示，提供最基础的流式输出支持。
+    Stream LLM chat replies (SSE). Tool calling is not supported in this path.
+    Basic streaming only for demonstration.
     """
     user = db.get(User, current_user_id) if db and current_user_id else None
     info = get_llm_client(user)
@@ -494,6 +494,6 @@ async def generate_chat_reply_stream(message: str, db: Session = None, current_u
         yield "data: [DONE]\n\n"
 
     except Exception as e:
-        logger.error(f"LLM Stream 调用失败: {str(e)}")
+        logger.error(f"LLM stream call failed: {str(e)}")
         data = json.dumps({"error": str(e)}, ensure_ascii=False)
         yield f"data: {data}\n\n"

@@ -28,7 +28,7 @@ class TestEncryptDecrypt:
         assert decrypt_api_key(encrypted) == original
 
     def test_encrypt_unicode_key(self):
-        original = "sk-测试密钥中文123🚀"
+        original = "sk-test-key-unicode123🚀"
         encrypted = encrypt_api_key(original)
         assert decrypt_api_key(encrypted) == original
 

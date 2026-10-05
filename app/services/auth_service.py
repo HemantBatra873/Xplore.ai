@@ -10,14 +10,13 @@ from app.models.user import User
 
 class AuthService:
     """
-    鉴权相关业务逻辑
+    Authentication service logic.
     """
 
     @classmethod
     def authenticate_user(cls, db: Session, email: str, password: str) -> Optional[User]:
         """
-        验证用户邮箱和密码
-        验证成功返回 User 对象，失败返回 None
+        Verify email and password; return User on success, None otherwise.
         """
         user = db.execute(select(User).where(User.email == email)).scalar_one_or_none()
         if not user:

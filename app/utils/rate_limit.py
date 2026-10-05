@@ -13,7 +13,7 @@ redis_client = Redis.from_url(settings.REDIS_URL, decode_responses=True)
 
 class RateLimiter:
     """
-    基于 Redis ZSET 的滑动窗口限流器
+    Sliding-window rate limiter using a Redis ZSET.
     """
 
     def __init__(self, times: int, seconds: int):
@@ -21,7 +21,7 @@ class RateLimiter:
         self.seconds = seconds
 
     async def __call__(self, request: Request):
-        # 优先使用 Authorization Token 的 hash 或者 IP 作为限流 key
+        # Prefer Authorization token hash or client IP as the rate-limit key
         auth_header = request.headers.get("Authorization")
         if auth_header:
             client_id = hashlib.sha256(auth_header.encode()).hexdigest()[:16]
@@ -36,13 +36,13 @@ class RateLimiter:
 
         try:
             async with redis_client.pipeline(transaction=True) as pipe:
-                # 移除时间窗口之前的数据
+                # Drop entries outside the window
                 pipe.zremrangebyscore(key, 0, window_start)
-                # 统计当前窗口内的请求数
+                # Count requests in the current window
                 pipe.zcard(key)
-                # 将当前请求加入窗口
+                # Record this request
                 pipe.zadd(key, {member_id: current})
-                # 设置过期时间，避免长期占用内存
+                # TTL on the key to limit memory use
                 pipe.expire(key, self.seconds)
                 results = await pipe.execute()
 
@@ -57,5 +57,5 @@ class RateLimiter:
         except HTTPException:
             raise
         except Exception as e:
-            # 如果 Redis 挂了，降级放行，不影响核心业务
+            # If Redis is down, fail open so core traffic is not blocked
             logger.error(f"Rate limit redis error: {e}")

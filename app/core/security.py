@@ -6,24 +6,23 @@ from passlib.context import CryptContext
 
 from app.core.config import settings
 
-# 配置 bcrypt 作为密码哈希算法。
-# 注意：最新版的 bcrypt (4.0.0+) 去掉了 bcrypt.hashpw 处理长密码的特性，而 passlib 还没更新
-# 所以在使用 passlib 时，最好把密码显式转换为最大 72 字节的 bytes。
+# bcrypt password hashing via passlib
+# bcrypt 4.0+ no longer truncates long passwords; passlib may lag — truncate to 72 bytes below
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
-    验证明文密码与哈希密码是否匹配
+    Return True if plain password matches the hash.
     """
     return pwd_context.verify(plain_password, hashed_password)
 
 
 def get_password_hash(password: str) -> str:
     """
-    将明文密码进行哈希加密
+    Hash a plain-text password.
     """
-    # bcrypt 算法的最大支持长度为 72 字节
+    # bcrypt max password length is 72 bytes
     if len(password.encode("utf-8")) > 72:
         password = password[:72]
     return pwd_context.hash(password)
@@ -31,7 +30,7 @@ def get_password_hash(password: str) -> str:
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """
-    生成 JWT Token
+    Create a signed JWT access token.
     """
     to_encode = data.copy()
     if expires_delta:

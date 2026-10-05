@@ -19,7 +19,7 @@ router = APIRouter()
 
 @router.get("/setup/status", response_model=SetupStatus, summary="Check system setup status")
 async def get_setup_status(db: Session = Depends(get_db)):
-    """检测系统是否已完成初始化（是否已有用户）"""
+    """Return whether the system has been initialized (at least one user exists)."""
     user_count = db.execute(select(func.count(User.id))).scalar()
     return SetupStatus(
         initialized=user_count > 0,
@@ -34,8 +34,8 @@ async def initial_setup(
     db: Session = Depends(get_db),
 ):
     """
-    仅在系统未初始化时可用（无用户存在时）。
-    创建第一个用户并直接返回 JWT Token。
+    Create the first administrator user and return a JWT token.
+    Available only when the system has no users yet.
     """
     user_count = db.execute(select(func.count(User.id))).scalar()
     if user_count > 0:
@@ -56,12 +56,12 @@ async def initial_setup(
 
     user = UserService.create_user(db, user_in)
 
-    # 首个用户设为超级管理员
+    # First registered user becomes superuser
     user.is_superuser = True
     db.commit()
     db.refresh(user)
 
-    # 如果提供了 LLM API Key，同时配置
+    # If an LLM API key was provided, persist it on the user
     if setup_in.llm_api_key:
         from app.schemas.user import UserLLMConfigUpdate
 
@@ -86,12 +86,12 @@ async def initial_setup(
 @router.post("/login", response_model=Token, summary="Sign in and get a token")
 async def login_access_token(
     db: Session = Depends(get_db),
-    # OAuth2PasswordRequestForm 默认接收 x-www-form-urlencoded 格式的数据（即 username 和 password）
+    # OAuth2PasswordRequestForm expects x-www-form-urlencoded (username and password)
     form_data: OAuth2PasswordRequestForm = Depends(),
 ):
     """
-    OAuth2 兼容的 token 登录接口，通过用户名（或邮箱）和密码获取 JWT token。
-    注意：在我们的设计里，这里的 form_data.username 实际上前端传的是 email。
+    OAuth2-compatible token login. Clients send email in the username field
+    and receive a JWT access token on success.
     """
     user = AuthService.authenticate_user(db, email=form_data.username, password=form_data.password)
 
@@ -102,7 +102,7 @@ async def login_access_token(
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
-    # 按照 JWT 标准，"sub" (subject) 存放用户的唯一标识符
+    # JWT "sub" (subject) holds the user identifier
     access_token = create_access_token(
         data={"sub": str(user.id)}, expires_delta=access_token_expires
     )

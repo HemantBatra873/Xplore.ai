@@ -6,11 +6,11 @@ BACKUP_DIR="${BACKUP_DIR:-./backups}"
 DB_HOST="${DB_HOST:-localhost}"
 DB_PORT="${DB_PORT:-5432}"
 DB_USER="${DB_USER:-postgres}"
-DB_NAME="${DB_NAME:-fastapi_db}"
+DB_NAME="${DB_NAME:-xplore_db}"
 
 mkdir -p "$BACKUP_DIR"
 
-BACKUP_FILE="$BACKUP_DIR/fastapi_db_$TIMESTAMP.sql.gz"
+BACKUP_FILE="$BACKUP_DIR/xplore_db_$TIMESTAMP.sql.gz"
 
 echo "Backing up $DB_NAME to $BACKUP_FILE ..."
 PGPASSWORD="${DB_PASSWORD:-postgres}" pg_dump \

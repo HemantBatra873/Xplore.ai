@@ -1,6 +1,6 @@
 def test_create_user(client):
     """
-    测试用户注册功能
+    Test user registration.
     """
     response = client.post(
         "/api/v1/users/",
@@ -11,7 +11,7 @@ def test_create_user(client):
     assert data["email"] == "pytest@example.com"
     assert data["username"] == "pytestuser"
     assert "id" in data
-    # 确保密码不会在响应中返回
+    # Password must not appear in the response
     assert "password" not in data
     assert "hashed_password" not in data
 

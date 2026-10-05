@@ -1,1 +1,1 @@
-# 初始化 core 包
+# core package

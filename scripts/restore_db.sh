@@ -5,10 +5,10 @@ BACKUP_DIR="${BACKUP_DIR:-./backups}"
 DB_HOST="${DB_HOST:-localhost}"
 DB_PORT="${DB_PORT:-5432}"
 DB_USER="${DB_USER:-postgres}"
-DB_NAME="${DB_NAME:-fastapi_db}"
+DB_NAME="${DB_NAME:-xplore_db}"
 
 if [ -z "${1:-}" ]; then
-    BACKUP_FILE=$(ls -t "$BACKUP_DIR"/fastapi_db_*.sql.gz 2>/dev/null | head -1)
+    BACKUP_FILE=$(ls -t "$BACKUP_DIR"/xplore_db_*.sql.gz 2>/dev/null | head -1)
     if [ -z "$BACKUP_FILE" ]; then
         echo "No backup file found in $BACKUP_DIR"
         echo "Usage: $0 <backup_file.sql.gz>"

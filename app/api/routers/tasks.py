@@ -17,9 +17,7 @@ async def create_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    创建一个新的任务，默认绑定到当前登录用户
-    """
+    """Create a new task owned by the current user."""
     return TaskService.create_task(db, task_in, owner_id=current_user.id)
 
 
@@ -30,9 +28,7 @@ async def list_tasks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    List the current user tasks列表（支持分页）
-    """
+    """List the current user's tasks with optional pagination."""
     return TaskService.list_tasks(db, owner_id=current_user.id, skip=skip, limit=limit)
 
 
@@ -40,9 +36,7 @@ async def list_tasks(
 async def get_task(
     task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
-    """
-    获取单个任务详情（只能获取属于当前用户的任务）
-    """
+    """Get a single task that belongs to the current user."""
     return TaskService.get_task(db, task_id, owner_id=current_user.id)
 
 
@@ -53,9 +47,7 @@ async def update_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    更新任务的标题、描述或状态
-    """
+    """Update a task title, description, or status."""
     return TaskService.update_task(db, task_id, owner_id=current_user.id, task_in=task_in)
 
 
@@ -63,7 +55,5 @@ async def update_task(
 async def delete_task(
     task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
-    """
-    删除属于当前用户的一个任务
-    """
+    """Delete a task that belongs to the current user."""
     return TaskService.delete_task(db, task_id, owner_id=current_user.id)

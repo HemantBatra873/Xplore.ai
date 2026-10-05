@@ -11,17 +11,13 @@ class TaskBase(BaseModel):
 
 
 class TaskCreate(TaskBase):
-    """
-    Create a task时的请求模型
-    """
+    """Request model for creating a task."""
 
     pass
 
 
 class TaskUpdate(BaseModel):
-    """
-    更新任务时的请求模型，允许部分更新
-    """
+    """Request model for partially updating a task."""
 
     title: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = None
@@ -29,9 +25,7 @@ class TaskUpdate(BaseModel):
 
 
 class TaskOut(TaskBase):
-    """
-    返回给前端的任务响应模型
-    """
+    """Task response model returned to clients."""
 
     id: int
     owner_id: int

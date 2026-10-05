@@ -12,16 +12,13 @@ from app.utils.rate_limit import RateLimiter
 
 router = APIRouter()
 
-# 注册接口限流：同一 IP 每小时最多 5 次注册（测试环境不限流）
+# Registration rate limit: 5 sign-ups per hour per IP (disabled in tests)
 register_limiter = RateLimiter(times=5, seconds=3600) if not settings.TESTING else None
 
 
 @router.post("/", response_model=UserOut, status_code=status.HTTP_201_CREATED, summary="Create a user")
 async def create_user(user_in: UserCreate, request: Request, db: Session = Depends(get_db)):
-    """
-    通过 Depends(get_db) 自动获取数据库连接，并传递给 service 层。
-    限流：同一 IP 每小时最多 5 次注册请求。
-    """
+    """Register a new user. Rate limited to 5 registrations per IP per hour."""
     if register_limiter:
         await register_limiter(request)
     return UserService.create_user(db, user_in)
@@ -29,10 +26,7 @@ async def create_user(user_in: UserCreate, request: Request, db: Session = Depen
 
 @router.get("/me", response_model=UserOut, summary="Get the current user")
 async def get_user_me(current_user: User = Depends(get_current_user)):
-    """
-    这是一个受保护的接口。
-    必须在请求头带上有效的 Authorization: Bearer <Token> 才能访问。
-    """
+    """Return the authenticated user. Requires Authorization: Bearer <token>."""
     return current_user
 
 
@@ -42,10 +36,7 @@ async def update_user_llm_config(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    更新用户自己的大模型服务商配置 (支持多租户独立配置)。
-    API Key 将会被对称加密后入库，确保安全性。
-    """
+    """Update the current user's LLM provider settings. API keys are encrypted at rest."""
     return UserService.update_llm_config(db, current_user.id, config_in)
 
 
@@ -69,9 +60,7 @@ async def get_user(
 async def list_users(
     db: Session = Depends(get_db), current_user: User = Depends(get_current_active_superuser)
 ):
-    """
-    需要超级管理员权限才能访问
-    """
+    """List all users. Requires superuser privileges."""
     return UserService.list_users(db)
 
 
@@ -81,7 +70,5 @@ async def delete_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_superuser),
 ):
-    """
-    需要超级管理员权限才能删除用户
-    """
+    """Delete a user. Requires superuser privileges."""
     return UserService.delete_user(db, user_id)

@@ -1,5 +1,5 @@
 """
-RAG 服务层单元测试 (直接调用 Service 而非走 HTTP)
+RAG service unit tests (service layer, not HTTP).
 """
 
 import asyncio
@@ -180,7 +180,7 @@ class TestRAGDocumentProcessing:
     def test_process_document_with_content(self, db_session):
         owner = _next_owner()
         svc = RAGService(db_session)
-        content = "人工智能是计算机科学的一个分支。\n它致力于创造能够模拟人类智能的系统。"
+        content = "Artificial intelligence is a branch of computer science.\nIt aims to build systems that mimic human intelligence."
         doc = svc.create_document_record(filename="ai.txt", content=content, owner_id=owner)
 
         async def fake_embeddings(texts):

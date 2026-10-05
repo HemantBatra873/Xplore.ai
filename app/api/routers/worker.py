@@ -30,9 +30,7 @@ async def trigger_document_processing(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    为当前用户的指定文档重新提交一次异步处理任务。
-    """
+    """Resubmit an asynchronous processing task for one of the current user's documents."""
     rag_service = RAGService(db)
     document = rag_service.get_document_for_user(
         document_id=request.document_id,
@@ -62,9 +60,7 @@ async def trigger_document_processing(
 async def get_task_status(
     task_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
-    """
-    根据 Task ID 查询当前用户文档处理任务的执行状态。
-    """
+    """Get the status of a document-processing task that belongs to the current user."""
     rag_service = RAGService(db)
     document = rag_service.get_document_by_task_id_for_user(
         task_id=task_id,

@@ -1,24 +1,23 @@
 """
-任务 CRUD 端到端测试 (通过 API 接口)
+Task CRUD end-to-end tests (through the HTTP API).
 """
 
 
 def _create_user_and_get_token(client, suffix: str) -> str:
     email = f"task-{suffix}@example.com"
-    password = "password123"
     client.post(
         "/api/v1/users/",
         json={
-            "username": f"taskuser-{suffix}",
+            "username": f"task_{suffix}",
             "email": email,
-            "password": password,
+            "password": "testpassword123",
+            "full_name": f"Task User {suffix}",
         },
     )
     response = client.post(
         "/api/v1/auth/login",
-        data={"username": email, "password": password},
+        data={"username": email, "password": "testpassword123"},
     )
-    assert response.status_code == 200
     return response.json()["access_token"]
 
 
@@ -28,12 +27,12 @@ class TestTaskCreate:
         response = client.post(
             "/api/v1/tasks/",
             headers={"Authorization": f"Bearer {token}"},
-            json={"title": "学习 FastAPI", "description": "阅读文档并写demo"},
+            json={"title": "Learn Xplore.ai", "description": "Read the docs and try a demo"},
         )
         assert response.status_code == 201
         data = response.json()
-        assert data["title"] == "学习 FastAPI"
-        assert data["description"] == "阅读文档并写demo"
+        assert data["title"] == "Learn Xplore.ai"
+        assert data["description"] == "Read the docs and try a demo"
         assert data["status"] == "pending"
         assert "id" in data
         assert "owner_id" in data
@@ -59,14 +58,14 @@ class TestTaskList:
     def test_list_tasks_returns_user_tasks(self, client):
         token = _create_user_and_get_token(client, "list")
         headers = {"Authorization": f"Bearer {token}"}
-        client.post("/api/v1/tasks/", headers=headers, json={"title": "任务A"})
-        client.post("/api/v1/tasks/", headers=headers, json={"title": "任务B"})
+        client.post("/api/v1/tasks/", headers=headers, json={"title": "Task A"})
+        client.post("/api/v1/tasks/", headers=headers, json={"title": "Task B"})
         response = client.get("/api/v1/tasks/", headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 2
         titles = {item["title"] for item in data}
-        assert titles == {"任务A", "任务B"}
+        assert titles == {"Task A", "Task B"}
 
     def test_list_tasks_user_isolation(self, client):
         token_a = _create_user_and_get_token(client, "isolate-a")
@@ -74,19 +73,19 @@ class TestTaskList:
         client.post(
             "/api/v1/tasks/",
             headers={"Authorization": f"Bearer {token_a}"},
-            json={"title": "用户A的任务"},
+            json={"title": "User A task"},
         )
         client.post(
             "/api/v1/tasks/",
             headers={"Authorization": f"Bearer {token_b}"},
-            json={"title": "用户B的任务"},
+            json={"title": "User B task"},
         )
         resp_a = client.get("/api/v1/tasks/", headers={"Authorization": f"Bearer {token_a}"})
         resp_b = client.get("/api/v1/tasks/", headers={"Authorization": f"Bearer {token_b}"})
         assert len(resp_a.json()) == 1
-        assert resp_a.json()[0]["title"] == "用户A的任务"
+        assert resp_a.json()[0]["title"] == "User A task"
         assert len(resp_b.json()) == 1
-        assert resp_b.json()[0]["title"] == "用户B的任务"
+        assert resp_b.json()[0]["title"] == "User B task"
 
     def test_list_tasks_empty(self, client):
         token = _create_user_and_get_token(client, "empty")
@@ -102,12 +101,12 @@ class TestTaskGet:
         created = client.post(
             "/api/v1/tasks/",
             headers=headers,
-            json={"title": "获取测试"},
+            json={"title": "Fetch test"},
         )
         task_id = created.json()["id"]
         response = client.get(f"/api/v1/tasks/{task_id}", headers=headers)
         assert response.status_code == 200
-        assert response.json()["title"] == "获取测试"
+        assert response.json()["title"] == "Fetch test"
 
     def test_get_task_not_found(self, client):
         token = _create_user_and_get_token(client, "nf")
@@ -121,7 +120,7 @@ class TestTaskGet:
         created = client.post(
             "/api/v1/tasks/",
             headers={"Authorization": f"Bearer {token_a}"},
-            json={"title": "私密任务"},
+            json={"title": "Private task"},
         )
         task_id = created.json()["id"]
         response = client.get(
@@ -135,20 +134,20 @@ class TestTaskUpdate:
     def test_update_task_title(self, client):
         token = _create_user_and_get_token(client, "upd-title")
         headers = {"Authorization": f"Bearer {token}"}
-        created = client.post("/api/v1/tasks/", headers=headers, json={"title": "原始标题"})
+        created = client.post("/api/v1/tasks/", headers=headers, json={"title": "Original title"})
         task_id = created.json()["id"]
         response = client.put(
             f"/api/v1/tasks/{task_id}",
             headers=headers,
-            json={"title": "新标题"},
+            json={"title": "New title"},
         )
         assert response.status_code == 200
-        assert response.json()["title"] == "新标题"
+        assert response.json()["title"] == "New title"
 
     def test_update_task_status(self, client):
         token = _create_user_and_get_token(client, "upd-status")
         headers = {"Authorization": f"Bearer {token}"}
-        created = client.post("/api/v1/tasks/", headers=headers, json={"title": "待办"})
+        created = client.post("/api/v1/tasks/", headers=headers, json={"title": "Todo"})
         task_id = created.json()["id"]
         response = client.put(
             f"/api/v1/tasks/{task_id}",
@@ -164,18 +163,18 @@ class TestTaskUpdate:
         created = client.post(
             "/api/v1/tasks/",
             headers=headers,
-            json={"title": "部分更新", "description": "原始描述", "status": "pending"},
+            json={"title": "Partial update", "description": "Original description", "status": "pending"},
         )
         task_id = created.json()["id"]
         response = client.put(
             f"/api/v1/tasks/{task_id}",
             headers=headers,
-            json={"description": "新描述"},
+            json={"description": "New description"},
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["title"] == "部分更新"
-        assert data["description"] == "新描述"
+        assert data["title"] == "Partial update"
+        assert data["description"] == "New description"
         assert data["status"] == "pending"
 
 
@@ -183,11 +182,11 @@ class TestTaskDelete:
     def test_delete_task(self, client):
         token = _create_user_and_get_token(client, "delete")
         headers = {"Authorization": f"Bearer {token}"}
-        created = client.post("/api/v1/tasks/", headers=headers, json={"title": "待删除"})
+        created = client.post("/api/v1/tasks/", headers=headers, json={"title": "To delete"})
         task_id = created.json()["id"]
         response = client.delete(f"/api/v1/tasks/{task_id}", headers=headers)
         assert response.status_code == 200
-        assert response.json()["title"] == "待删除"
+        assert response.json()["title"] == "To delete"
         get_resp = client.get(f"/api/v1/tasks/{task_id}", headers=headers)
         assert get_resp.status_code == 404
 

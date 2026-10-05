@@ -4,20 +4,20 @@ from pydantic import BaseModel, field_validator
 
 
 class Token(BaseModel):
-    """登录成功后返回的 Token 格式"""
+    """Access token returned after a successful sign-in."""
 
     access_token: str
     token_type: str
 
 
 class TokenPayload(BaseModel):
-    """解析 Token 时内部使用的载荷格式"""
+    """Internal JWT payload used when decoding tokens."""
 
     sub: Optional[str] = None
 
 
 class SetupStatus(BaseModel):
-    """系统初始化状态"""
+    """Whether the system has completed initial setup."""
 
     initialized: bool
     llm_mock: bool
@@ -25,7 +25,7 @@ class SetupStatus(BaseModel):
 
 
 class SetupRequest(BaseModel):
-    """首次初始化请求"""
+    """Payload for creating the first administrator during setup."""
 
     username: str
     email: str

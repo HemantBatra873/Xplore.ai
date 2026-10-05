@@ -42,7 +42,7 @@ async def lifespan(app: FastAPI):
 
     _validate_startup_config()
 
-    # 数据库连接检查
+    # Database connectivity check
     logger.info("Testing database connection...")
     try:
         with engine.connect() as connection:
@@ -51,7 +51,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Database connection failed: {e}")
 
-    # pgvector 扩展检查（RAG 功能必需）
+    # pgvector extension check (required for RAG)
     logger.info("Checking pgvector extension...")
     try:
         with engine.connect() as connection:
@@ -71,7 +71,7 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables ensured.")
 
-    # Redis 连通性检查
+    # Redis connectivity check
     logger.info("Testing Redis connection...")
     redis_client = Redis.from_url(settings.REDIS_URL, decode_responses=True)
     try:
@@ -95,7 +95,7 @@ app = FastAPI(
     docs_url=None,
 )
 
-# 注册中间件
+# Register middleware
 app.add_middleware(RequestIDMiddleware)
 
 app.add_middleware(
@@ -106,11 +106,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 初始化并注册 Prometheus 指标暴露器
+# Initialize and expose Prometheus metrics
 Instrumentator().instrument(app).expose(app)
 
 
-# 自定义 Swagger UI 路由，添加深色模式适配
+# Custom Swagger UI with dark-mode CSS
 @app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui_html():
     html_content = get_swagger_ui_html(
@@ -118,18 +118,18 @@ async def custom_swagger_ui_html():
         title=app.title + " - Swagger UI",
     ).body.decode("utf-8")
 
-    # 注入 CSS 样式，使 Swagger UI 在系统深色模式下表现良好，同时保留浅色模式
+    # Inject CSS so Swagger UI works in dark mode while keeping light mode
     custom_css = """
     <style>
         @media (prefers-color-scheme: dark) {
             body { background-color: #121212 !important; color: #e0e0e0 !important; }
             
-            /* 顶部栏和基础布局 */
+            /* Top bar and base layout */
             .swagger-ui .topbar { background-color: #1e1e1e !important; border-bottom: 1px solid #333; }
             .swagger-ui .info .title, .swagger-ui .info p, .swagger-ui .info li { color: #e0e0e0 !important; }
             .swagger-ui .scheme-container { background-color: #1e1e1e !important; border-bottom: 1px solid #333; box-shadow: none; }
             
-            /* 模块和操作块 */
+            /* Operation blocks */
             .swagger-ui .opblock { border-color: #333 !important; background-color: rgba(255,255,255,0.02); }
             .swagger-ui .opblock-summary-control { outline: none; }
             .swagger-ui .opblock .opblock-summary-operation-id, 
@@ -137,7 +137,7 @@ async def custom_swagger_ui_html():
             .swagger-ui .opblock .opblock-summary-path__deprecated { color: #e0e0e0 !important; }
             .swagger-ui .opblock-description-wrapper p { color: #b0b0b0 !important; }
             
-            /* 弹窗 (Modal) 和 Auth 界面 */
+            /* Modal and auth UI */
             .swagger-ui .dialog-ux .modal-ux { background-color: #1e1e1e !important; border: 1px solid #444 !important; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
             .swagger-ui .dialog-ux .modal-ux-header { border-bottom: 1px solid #444 !important; }
             .swagger-ui .dialog-ux .modal-ux-header h3, 
@@ -145,7 +145,7 @@ async def custom_swagger_ui_html():
             .swagger-ui .dialog-ux .modal-ux-content p { color: #e0e0e0 !important; }
             .swagger-ui .auth-container { border-bottom-color: #444 !important; }
             
-            /* 表单元素 */
+            /* Form controls */
             .swagger-ui input[type=text], .swagger-ui input[type=password], .swagger-ui textarea, .swagger-ui select {
                 background-color: #2d2d2d !important;
                 color: #fff !important;
@@ -155,26 +155,26 @@ async def custom_swagger_ui_html():
                 border-color: #49cc90 !important;
             }
             
-            /* 按钮 */
+            /* Buttons */
             .swagger-ui .btn { color: #e0e0e0; border-color: #666; background: transparent; }
             .swagger-ui .btn.authorize { color: #49cc90 !important; border-color: #49cc90 !important; }
             .swagger-ui .btn.execute { background-color: #49cc90 !important; color: #fff !important; border-color: #49cc90 !important; }
             .swagger-ui .btn.cancel { border-color: #f93e3e !important; color: #f93e3e !important; }
             .swagger-ui .btn-done { color: #fff !important; }
             
-            /* 表格和参数 */
+            /* Tables and parameters */
             .swagger-ui table thead tr td, .swagger-ui table thead tr th { border-bottom-color: #444 !important; color: #e0e0e0 !important; }
             .swagger-ui .parameter__name, .swagger-ui .parameter__type { color: #e0e0e0 !important; }
             .swagger-ui .response-col_status, .swagger-ui .response-col_description { color: #e0e0e0 !important; }
             .swagger-ui table.model tbody tr td { border-bottom-color: #333 !important; }
             
-            /* 响应体高亮块 */
+            /* Response highlight blocks */
             .swagger-ui .highlight-code { background-color: #2d2d2d !important; }
             .swagger-ui .model-box { background-color: #2d2d2d !important; }
             .swagger-ui .model { color: #e0e0e0 !important; }
             .swagger-ui .prop-type { color: #8aafff !important; }
             
-            /* 解决 Auth 错误文本颜色不可见问题 */
+            /* Auth error text visibility in dark mode */
             .swagger-ui .auth-container .errors { background-color: #401010 !important; color: #ff6060 !important; }
             .swagger-ui .dialog-ux .modal-ux-header .close-modal { fill: #e0e0e0 !important; }
             .swagger-ui svg { fill: #e0e0e0; }
@@ -186,11 +186,11 @@ async def custom_swagger_ui_html():
     return HTMLResponse(html_content)
 
 
-# 注册全局异常处理器
+# Register global exception handlers
 app.add_exception_handler(AppException, app_exception_handler)
 app.add_exception_handler(HTTPException, http_exception_handler)
 
-# 注册所有路由
+# Register API routers
 app.include_router(health.router, prefix="/api/v1/health", tags=["Health"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
@@ -201,13 +201,13 @@ app.include_router(rag.router, prefix="/api/v1/rag", tags=["RAG"])
 app.include_router(observability.router, prefix="/api/v1/observability", tags=["Observability"])
 
 
-# 挂载前端静态文件目录
-# 优先使用 app/static/（Docker 镜像构建产物），其次使用 frontend/dist/（开发模式）
+# Mount frontend static files
+# Prefer app/static/ (Docker build) then frontend/dist/ (local dev)
 import os
 
 _static_candidates = [
-    os.path.join(os.path.dirname(__file__), "static"),  # Docker 镜像: app/static/
-    os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"),  # 开发模式: frontend/dist/
+    os.path.join(os.path.dirname(__file__), "static"),  # Docker image: app/static/
+    os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"),  # Dev: frontend/dist/
 ]
 _static_dir = None
 for _dir in _static_candidates:
@@ -218,8 +218,8 @@ for _dir in _static_candidates:
 if _static_dir:
     app.mount("/", StaticFiles(directory=_static_dir, html=True), name="static")
 else:
-    # 无前端构建产物时，提供 JSON 欢迎信息
-    @app.get("/", summary="根目录欢迎信息", tags=["Root"])
+    # JSON welcome when no frontend build is present
+    @app.get("/", summary="Root welcome", tags=["Root"])
     async def root():
         return {
             "message": "Welcome to Xplore.ai. Visit /docs for API documentation.",

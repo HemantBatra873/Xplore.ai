@@ -4,9 +4,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class UserBase(BaseModel):
-    """
-    所有 User 模型共用的基础字段
-    """
+    """Shared user fields used by request and response models."""
 
     username: str = Field(..., min_length=3, max_length=50, description="Username")
     email: EmailStr = Field(..., description="Email address")
@@ -14,23 +12,19 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    """
-    Create a user时所需的字段（请求模型）
-    """
+    """Fields required to create a user."""
 
     password: str = Field(..., min_length=6, description="Password")
 
 
 class UserOut(UserBase):
-    """
-    返回给客户端的用户字段（响应模型），去除了密码等敏感信息
-    """
+    """User fields returned to clients. Sensitive fields such as passwords are omitted."""
 
     id: int
     is_active: bool = True
     is_superuser: bool = False
 
-    # 返回给客户端的配置，这里不返回 encrypted_api_key，而是返回是否已配置
+    # Return provider settings without exposing the encrypted API key.
     llm_provider: Optional[str] = None
     llm_base_url: Optional[str] = None
     llm_model_name: Optional[str] = None
@@ -40,9 +34,7 @@ class UserOut(UserBase):
 
 
 class UserLLMConfigUpdate(BaseModel):
-    """
-    用户更新自定义 LLM 配置
-    """
+    """Payload for updating a user's custom LLM configuration."""
 
     llm_provider: Optional[str] = Field(None, description="LLM provider")
     llm_base_url: Optional[str] = Field(None, description="LLM Base URL")

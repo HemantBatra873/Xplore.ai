@@ -4,18 +4,18 @@ from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 from app.core.logging import logger
 
-# 从统一的配置中心读取数据库连接地址
+# Database URL from settings
 SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
 
-# 初始化 SQLAlchemy 同步引擎
+# SQLAlchemy sync engine
 try:
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
-        pool_pre_ping=True,  # 每次从连接池获取连接时，验证连接是否可用
-        echo=False,  # 如果设为 True，会在控制台打印所有执行的 SQL 语句
+        pool_pre_ping=True,  # Verify connections before use
+        echo=False,  # Set True to log all SQL
     )
 
-    # 初始化 Session 工厂
+    # Session factory
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     logger.info("Database engine configured successfully.")
 except Exception as e:

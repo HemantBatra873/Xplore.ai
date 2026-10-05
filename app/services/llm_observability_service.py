@@ -89,7 +89,7 @@ def create_llm_call_log(
         db.commit()
     except Exception as exc:
         db.rollback()
-        logger.error(f"写入 LLM 调用日志失败: {exc}")
+        logger.error(f"Failed to write LLM call log: {exc}")
 
 
 def get_llm_overview_stats(

@@ -36,7 +36,7 @@ def run():
     r = requests.post(
         f"{BASE}/api/v1/tasks/",
         headers=headers,
-        json={"title": "复习 FastAPI", "description": "阅读核心源码", "status": "pending"},
+        json={"title": "Review Xplore.ai", "description": "Read the core documentation", "status": "pending"},
     )
     task = r.json()
     print(f"5. Created task: id={task['id']}, title={task['title']}, status={r.status_code}")
@@ -49,7 +49,7 @@ def run():
     r = requests.put(
         f"{BASE}/api/v1/tasks/{task['id']}",
         headers=headers,
-        json={"status": "completed", "description": "已完成源码阅读"},
+        json={"status": "completed", "description": "Finished reading the documentation"},
     )
     print(f"7. Updated: status={r.json()['status']}")
 

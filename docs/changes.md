@@ -6,7 +6,10 @@
 - Preserved the existing Python import package `app` to avoid unnecessary runtime and migration risk.
 - Converted authentication/setup copy and starter seed content to English.
 - Removed the legacy standalone HTML demo and old sample-lore artifacts.
-- Removed stale starter review, resume, deployment, and frontend planning documents.
+- Removed stale starter review, resume, deployment, frontend planning, and Chinese MVP packaging documents.
+- Renamed the default database from `fastapi_db` to `xplore_db` across config, Compose, CI, Makefile, and backup scripts.
+- Made frontend auth storage keys consistent as `xplore_token` / `xplore_user` across API, chat streaming, and RAG streaming clients.
+- Translated remaining Chinese comments, docstrings, log messages, Makefile help text, Compose/Prometheus notes, bootstrap script output, and `.env.example` comments to English.
 - Preserved current chat, task, document, RAG, background processing, authentication, mock mode, and observability behavior.
 - Added `MIGRATION_CONTEXT.md` as the Phase 1 handoff record.
 

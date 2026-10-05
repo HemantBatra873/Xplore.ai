@@ -166,7 +166,7 @@ class RAGService:
     async def get_embeddings(self, texts: List[str]) -> List[List[float]]:
         """Call the embedding API to generate vectors"""
         try:
-            # 去除多余的空格，减少无意义 token
+            # Collapse whitespace to reduce token noise
             texts = [text.replace("\n", " ") for text in texts]
             response = await _get_embedding_client().embeddings.create(
                 input=texts, model=settings.EMBEDDING_MODEL_NAME
@@ -252,7 +252,7 @@ class RAGService:
             logger.warning("sentence-transformers is unavailable, so reranking is skipped.")
             return candidates[:top_k]
 
-        logger.info(f"==> 使用 BGE-Reranker 对 {len(candidates)} 个候选片段进行重排...")
+        logger.info(f"==> Reranking {len(candidates)} candidate chunks with BGE-Reranker...")
         pairs = [[query, chunk.content] for chunk in candidates]
         scores = await self._predict_rerank_scores(reranker, pairs)
 
@@ -260,7 +260,7 @@ class RAGService:
         scored_candidates.sort(key=lambda item: item[1], reverse=True)
 
         for rank, (chunk, score) in enumerate(scored_candidates[:top_k], start=1):
-            logger.info(f"重排 Rank {rank} (Score: {score:.4f}): {chunk.content[:60]}...")
+            logger.info(f"Rerank rank {rank} (score: {score:.4f}): {chunk.content[:60]}...")
 
         return [item[0] for item in scored_candidates[:top_k]]
 

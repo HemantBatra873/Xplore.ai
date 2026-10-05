@@ -12,15 +12,15 @@ from app.utils.errors import AppException
 
 class UserService:
     """
-    User 业务逻辑服务层 (真实数据库版)
+    User service layer (database-backed).
     """
 
     @classmethod
     def create_user(cls, db: Session, user_in: UserCreate) -> User:
         logger.info(f"Attempting to create user with email: {user_in.email}")
 
-        # 1. 检查邮箱是否已被注册
-        # select(User) 是 SQLAlchemy 2.0 的新式查询语法
+        # 1. Ensure email is not already registered
+        # SQLAlchemy 2.0 select() style query
         existing_user = db.execute(
             select(User).where(User.email == user_in.email)
         ).scalar_one_or_none()
@@ -31,7 +31,7 @@ class UserService:
                 code=1001, msg="Email already registered", status_code=status.HTTP_400_BAD_REQUEST
             )
 
-        # 2. 将 Pydantic 请求模型转换为 SQLAlchemy 数据模型，并对密码进行哈希加密
+        # 2. Map request schema to ORM model and hash the password
         db_user = User(
             username=user_in.username,
             email=user_in.email,
@@ -40,10 +40,10 @@ class UserService:
             is_active=True,
         )
 
-        # 3. 写入数据库并提交事务
+        # 3. Persist and commit
         db.add(db_user)
         db.commit()
-        db.refresh(db_user)  # 刷新以获取数据库自动生成的 id
+        db.refresh(db_user)  # Refresh for DB-generated id
 
         logger.info(f"User created successfully. ID: {db_user.id}")
         return db_user
@@ -52,7 +52,7 @@ class UserService:
     def get_user(cls, db: Session, user_id: int) -> User:
         logger.info(f"Fetching user with ID: {user_id}")
 
-        # db.get 是一种快捷的通过主键查询的方式
+        # db.get() loads by primary key
         user = db.get(User, user_id)
         if not user:
             logger.warning(f"User fetch failed: ID {user_id} not found")
@@ -64,7 +64,7 @@ class UserService:
     @classmethod
     def list_users(cls, db: Session) -> list[User]:
         logger.info("Fetching all users")
-        # 执行查询并获取所有结果
+        # Run query and return all rows
         return list(db.scalars(select(User)).all())
 
     @classmethod

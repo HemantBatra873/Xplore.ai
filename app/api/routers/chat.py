@@ -11,21 +11,21 @@ from app.utils.rate_limit import RateLimiter
 router = APIRouter()
 
 
-# 聊天接口，使用限流器：同一个客户端每 60 秒最多 20 次请求
+# Chat endpoint: rate limit 20 requests per 60 seconds per client
 @router.post(
     "/", summary="Chat with the assistant", dependencies=[Depends(RateLimiter(times=20, seconds=60))]
 )
 async def chat_with_ai(
     request: ChatRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),  # 默认只有登录用户可以聊天
+    current_user: User = Depends(get_current_user),  # Only signed-in users can chat by default
 ):
     """
-    基础对话接口（支持 Tool Calling 与 SSE 流式输出）。
-    要求用户在 Header 中携带 JWT Token 才能访问。
+    Chat with the assistant. Supports tool calling and optional SSE streaming.
+    Requires a valid JWT in the Authorization header.
     """
     if request.stream:
-        # 流式返回
+        # Streaming response
         return StreamingResponse(
             generate_chat_reply_stream(
                 message=request.message, db=db, current_user_id=current_user.id
@@ -33,7 +33,7 @@ async def chat_with_ai(
             media_type="text/event-stream",
         )
     else:
-        # 阻塞返回
+        # Blocking response
         reply = await generate_chat_reply(
             message=request.message, db=db, current_user_id=current_user.id
         )

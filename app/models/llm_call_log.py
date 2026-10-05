@@ -8,7 +8,7 @@ from app.db.base import Base
 
 class LLMCallLog(Base):
     """
-    记录每一次 LLM 调用的核心信息，方便做排障、成本统计和效果复盘。
+    Stores core fields for each LLM call (debugging, cost, quality review).
     """
 
     __tablename__ = "llm_call_logs"

@@ -18,7 +18,8 @@ async def get_llm_stats(
     current_user: User = Depends(get_current_active_user),
 ):
     """
-    普通用户查看自己的 LLM 调用统计；超级管理员查看全量统计。
+    Return LLM call statistics for the current user.
+    Superusers receive global statistics.
     """
     scoped_user_id = None if current_user.is_superuser else current_user.id
     return get_llm_overview_stats(db, user_id=scoped_user_id, days=days)

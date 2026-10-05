@@ -1,8 +1,8 @@
 """
-MCP (Model Context Protocol) 适配层
+MCP (Model Context Protocol) adapter layer.
 
-将系统内部Tool封装为标准 MCP Tool 接口，支持统一的注册、发现与调用。
-遵循 Model Context Protocol 规范，Tool定义兼容 OpenAI function calling 格式。
+Wraps internal tools as standard MCP tools for registration, discovery, and invocation.
+Tool definitions follow OpenAI function-calling format.
 """
 
 from typing import Any, Optional
@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.logging import logger
 
 # ==========================================
-# Tool Schema 定义（集中注册）
+# Tool schema definitions (central registry)
 # ==========================================
 _MCP_TOOL_DEFINITIONS = [
     {
@@ -100,14 +100,14 @@ _MCP_TOOL_DEFINITIONS = [
 
 
 # ==========================================
-# Tool处理器注册表
-# 定义 name -> { handler, requires_db, requires_user }
+# Tool handler registry
+# Maps name -> { handler, requires_db, requires_user }
 # ==========================================
 _MCP_TOOL_HANDLERS: dict[str, dict[str, Any]] = {}
 
 
 def _register_handler(name: str, requires_db: bool = False, requires_user: bool = False):
-    """装饰器：注册一个 MCP Tool处理器"""
+    """Decorator to register an MCP tool handler."""
 
     def decorator(func):
         _MCP_TOOL_HANDLERS[name] = {
@@ -121,8 +121,8 @@ def _register_handler(name: str, requires_db: bool = False, requires_user: bool 
 
 
 # ==========================================
-# 注册 5 个Tool处理器
-# 使用懒加载避免与 llm_service 循环引用
+# Register five tool handlers
+# Lazy import to avoid circular import with llm_service
 # ==========================================
 
 
@@ -152,7 +152,7 @@ def _handle_create_task(db: Session, user_id: int, title: str, description: str 
     from app.schemas.task import TaskCreate
     from app.services.task_service import TaskService
 
-    logger.info(f"==> [MCP] 模型尝试Create a task: title={title}")
+    logger.info(f"==> [MCP] Model attempting to create task: title={title}")
     task_in = TaskCreate(title=title, description=description)
     created_task = TaskService.create_task(db=db, task_in=task_in, owner_id=user_id)
     return f"Task created. ID: {created_task.id}, Title: {created_task.title}"
@@ -166,19 +166,19 @@ def _handle_calculate(expression: str) -> str:
 
 
 # ==========================================
-# MCP 服务入口
+# MCP service entry
 # ==========================================
 class MCPService:
-    """MCP 协议适配层 — 将内部 Tool 暴露为标准 MCP Tool"""
+    """MCP adapter — exposes internal tools as standard MCP tools."""
 
     @staticmethod
     def list_tools() -> list[dict]:
-        """获取所有已注册的 MCP Tool Schema（OpenAI function calling 兼容格式）"""
+        """Return all registered MCP tool schemas (OpenAI function-calling format)."""
         return list(_MCP_TOOL_DEFINITIONS)
 
     @staticmethod
     def list_handlers() -> dict[str, dict[str, Any]]:
-        """获取Tool处理器注册表信息（用于内省/调试）"""
+        """Return handler registry metadata (introspection/debug)."""
         return {
             name: {
                 "requires_db": info["requires_db"],
@@ -195,16 +195,16 @@ class MCPService:
         user_id: Optional[int] = None,
     ) -> str:
         """
-        统一Tool调用入口。
-        根据名称路由到对应的处理器，自动注入 db 和 user_id 依赖。
+        Unified tool entry point.
+        Routes by name and injects db and user_id when required.
         """
         if name not in _MCP_TOOL_HANDLERS:
-            logger.warning(f"==> [MCP] 未知Tool调用: {name}")
+            logger.warning(f"==> [MCP] Unknown tool call: {name}")
             return f"Unknown tool: {name}"
 
         info = _MCP_TOOL_HANDLERS[name]
         handler = info["handler"]
-        logger.info(f"==> [MCP] 调用Tool: {name}, 参数: {arguments}")
+        logger.info(f"==> [MCP] Calling tool: {name}, arguments: {arguments}")
 
         kwargs = dict(arguments)
         if info["requires_db"]:

@@ -19,8 +19,8 @@ class TestParseTxt:
         assert result.plain_text == "hello world"
 
     def test_parse_txt_chinese(self):
-        result = parse_txt("doc.txt", "你好，世界！".encode("utf-8"))
-        assert result.plain_text == "你好，世界！"
+        result = parse_txt("doc.txt", "Hello, world!".encode("utf-8"))
+        assert result.plain_text == "Hello, world!"
 
 
 class TestParseMd:

@@ -18,7 +18,7 @@ def test_health_check_returns_dependencies(client):
 
 def test_root_endpoint(client):
     response = client.get("/")
-    # 根路径可能返回 JSON 欢迎信息（无前端构建产物时）或 404（有前端静态文件挂载时）
+    # Root may return JSON welcome (no frontend build) or 404 (static mount)
     assert response.status_code in (200, 404)
     if response.status_code == 200:
         assert "Welcome" in response.json()["message"]

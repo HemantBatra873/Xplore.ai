@@ -12,14 +12,13 @@ from app.models.user import User
 from app.schemas.auth import TokenPayload
 from app.utils.errors import AppException
 
-# OAuth2 配置，指明了客户端应该去哪个 URL 换取 Token
+# OAuth2 token URL for clients
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
 def get_db() -> Generator:
     """
-    FastAPI 依赖注入：获取数据库 Session。
-    每次请求时创建一个新的数据库 Session，请求结束时自动关闭。
+    Yield a DB session per request; closed after the request.
     """
     db = SessionLocal()
     try:
@@ -30,13 +29,13 @@ def get_db() -> Generator:
 
 def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)) -> User:
     """
-    FastAPI 依赖注入：获取当前登录用户。
-    1. 从请求头中提取 JWT Token
-    2. 验证 Token 是否合法且未过期
-    3. 解析出 User ID 并从数据库中查询返回 User 对象
+    Resolve the current user from the JWT:
+    1. Read Bearer token
+    2. Validate signature and expiry
+    3. Load User by id from the database
     """
     try:
-        # 解码 JWT
+        # Decode JWT
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         token_data = TokenPayload(**payload)
     except (jwt.PyJWTError, ValidationError):
@@ -51,7 +50,7 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
             code=1003, msg="Invalid token payload", status_code=status.HTTP_401_UNAUTHORIZED
         )
 
-    # 查询数据库中是否有该用户
+    # Load user row
     user = db.get(User, int(token_data.sub))
     if not user:
         raise AppException(code=1004, msg="User not found", status_code=status.HTTP_404_NOT_FOUND)
@@ -63,7 +62,7 @@ def get_current_active_user(
     current_user: User = Depends(get_current_user),
 ) -> User:
     """
-    检查当前用户是否被激活
+    Require an active user account.
     """
     if not current_user.is_active:
         raise AppException(code=1006, msg="Inactive user", status_code=status.HTTP_400_BAD_REQUEST)
@@ -74,7 +73,7 @@ def get_current_active_superuser(
     current_user: User = Depends(get_current_active_user),
 ) -> User:
     """
-    检查当前用户是否是超级管理员
+    Require a superuser.
     """
     if not current_user.is_superuser:
         raise AppException(

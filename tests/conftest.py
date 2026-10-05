@@ -3,7 +3,7 @@ import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-# 测试环境标记（禁用 Rate Limiter 等）
+# Test env flags (disable rate limiter, etc.)
 os.environ["TESTING"] = "true"
 
 import pytest
@@ -34,8 +34,8 @@ else:
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-# 2. 覆盖 FastAPI 的依赖项 (Dependency Override)
-# 当测试客户端请求需要 get_db 的接口时，给它塞入我们的测试数据库 Session
+# 2. Override FastAPI dependencies
+# Inject the test DB session when routes depend on get_db
 def override_get_db():
     try:
         db = TestingSessionLocal()
@@ -51,7 +51,7 @@ app.dependency_overrides[get_db] = override_get_db
 @pytest.fixture(scope="session")
 def setup_database():
     """
-    在所有测试开始前，在内存数据库里建表；测试结束后销毁。
+    Create tables in the in-memory DB before tests; drop after.
     """
     if USING_POSTGRES:
         with engine.connect() as conn:
@@ -65,7 +65,7 @@ def setup_database():
 @pytest.fixture(scope="module")
 def client(setup_database):
     """
-    提供一个可以发起 HTTP 请求的测试客户端
+    HTTP test client fixture.
     """
     with TestClient(app) as c:
         yield c
