@@ -77,6 +77,22 @@ function MessageBubble({ message }: { message: Message }) {
         {message.tool_calls?.map((tc, i) => (
           <ToolCallCard key={i} toolCall={tc} />
         ))}
+        {message.citations && message.citations.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-[var(--border-primary)] space-y-2">
+            <p className="text-xs text-[var(--text-tertiary)]">
+              Sources ({message.citations.length})
+            </p>
+            {message.citations.map((source) => (
+              <div key={`${source.chunk_id}-${source.document_id}`} className="text-xs">
+                <p className="font-medium text-[var(--text-secondary)]">
+                  {source.filename}
+                  {source.knowledge_base_name ? ` · ${source.knowledge_base_name}` : ''}
+                </p>
+                <p className="text-[var(--text-tertiary)] mt-0.5 line-clamp-3">{source.excerpt}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

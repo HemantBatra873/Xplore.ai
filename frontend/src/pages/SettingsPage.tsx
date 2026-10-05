@@ -8,9 +8,11 @@ import api from '@/services/api'
 const PROVIDERS = [
   { value: '', label: 'Use global configuration' },
   { value: 'openai', label: 'OpenAI' },
+  { value: 'anthropic', label: 'Anthropic' },
+  { value: 'gemini', label: 'Gemini' },
   { value: 'deepseek', label: 'DeepSeek' },
   { value: 'ollama', label: 'Ollama' },
-  { value: 'custom', label: 'Custom' },
+  { value: 'openai_compatible', label: 'OpenAI-compatible' },
 ]
 
 export default function SettingsPage() {

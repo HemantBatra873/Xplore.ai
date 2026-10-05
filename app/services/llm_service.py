@@ -28,7 +28,6 @@ from app.services.llm_observability_service import (
     start_timer,
 )
 from app.services.mcp_service import MCPService
-from app.utils.encryption import decrypt_api_key
 
 # Reuse a single global AsyncOpenAI client when no per-user key is configured
 _global_client = None
@@ -110,29 +109,23 @@ class MockLLMClient:
 
 def get_llm_client(user: User = None) -> LLMClientInfo:
     """
-    Resolve the LLM client and model name.
-    Prefer the user's custom config (multi-tenant keys); fall back to global settings.
-    When LLM_MOCK=true, return MockLLMClient with no API key.
-    On decrypt failure for a user key, fall back to global configuration.
+    Resolve the LLM client and model name via the provider factory.
+    Kept for compatibility with RAG/chat call sites that still use AsyncOpenAI-shaped clients.
+    New code should prefer `get_llm_provider(user)`.
     """
+    from app.services.providers.factory import get_llm_provider
+    from app.services.providers.mock import MockLLMProvider
+    from app.services.providers.openai_compatible import OpenAICompatibleProvider
+
+    provider = get_llm_provider(user)
+    if isinstance(provider, MockLLMProvider):
+        return LLMClientInfo(client=MockLLMClient(), model_name=provider.model_name)
+    if isinstance(provider, OpenAICompatibleProvider):
+        return LLMClientInfo(client=provider._client, model_name=provider.model_name)
+
+    # Fallback for unexpected provider types
     if settings.LLM_MOCK:
-        logger.info("==> LLM mock mode is enabled; using the mock client")
         return LLMClientInfo(client=MockLLMClient(), model_name="mock-model")
-
-    if user and user.has_custom_llm_key:
-        try:
-            api_key = decrypt_api_key(user.llm_api_key_encrypted)
-            base_url = user.llm_base_url or settings.LLM_BASE_URL
-            model_name = user.llm_model_name or settings.LLM_MODEL_NAME
-
-            client = AsyncOpenAI(
-                api_key=api_key,
-                base_url=base_url,
-            )
-            return LLMClientInfo(client=client, model_name=model_name)
-        except Exception as e:
-            logger.warning(f"Unable to decrypt the custom LLM key for user {user.id}; using the global configuration: {e}")
-
     global _global_client
     if _global_client is None:
         _global_client = AsyncOpenAI(

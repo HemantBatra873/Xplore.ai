@@ -1,5 +1,14 @@
 # Change Log
 
+## Phase 4: Conversations, Unified AI & Providers
+
+- Added workspace-scoped `Conversation`, `Message`, and `MessageCitation` models with Alembic migration `f1a6b3c4d5e6`.
+- Introduced unified `AIOrchestrator` that persists turns, optionally retrieves via `retrieve_with_citations`, and calls provider-agnostic LLMs.
+- Added `/api/v1/conversations` CRUD + message/stream endpoints; `/api/v1/chat` is a thin compatibility wrapper.
+- Refactored LLM access into provider factory (OpenAI, Anthropic, Gemini, DeepSeek, Ollama, OpenAI-compatible, mock) and separated `EmbeddingProvider`.
+- Frontend chat now has persistent conversation list, knowledge toggle/KB selection, streaming, and citation display.
+- Added `tests/test_conversations.py` and `tests/test_providers.py`.
+
 ## Phase 3: Knowledge / RAG Evolution
 
 - Added workspace-scoped `KnowledgeBase` model, default "General" KB per workspace, and document `knowledge_base_id`.
@@ -33,4 +42,4 @@
 - Preserved current chat, task, document, RAG, background processing, authentication, mock mode, and observability behavior.
 - Added `MIGRATION_CONTEXT.md` as the migration handoff record.
 
-Phase 4+ features (agents, conversations, integrations, unified chat) remain out of scope until their phase.
+Phase 5+ features (agents, tools framework, MCP, integrations) remain out of scope until their phase.

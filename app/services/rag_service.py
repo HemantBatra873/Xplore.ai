@@ -4,13 +4,13 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from openai import AsyncOpenAI
 from redis.asyncio import Redis
 from sqlalchemy import delete, func, literal_column, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.logging import logger
+from app.services.providers.embedding import get_embedding_provider
 from app.models.document import (
     DOCUMENT_STATUS_FAILED,
     DOCUMENT_STATUS_PROCESSING,
@@ -29,8 +29,6 @@ except ImportError:
     CrossEncoder = None
     _reranker = None
 
-_embedding_client = None
-
 RRF_K = 60
 
 
@@ -42,16 +40,6 @@ class RetrievalHit:
     score: float
     vector_score: Optional[float] = None
     keyword_score: Optional[float] = None
-
-
-def _get_embedding_client() -> AsyncOpenAI:
-    global _embedding_client
-    if _embedding_client is None:
-        _embedding_client = AsyncOpenAI(
-            api_key=settings.EMBEDDING_API_KEY,
-            base_url=settings.EMBEDDING_BASE_URL,
-        )
-    return _embedding_client
 
 
 def get_reranker():
@@ -251,14 +239,9 @@ class RAGService:
         return document
 
     async def get_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """Call the embedding API to generate vectors"""
+        """Call the embedding provider to generate vectors."""
         try:
-            # Collapse whitespace to reduce token noise
-            texts = [text.replace("\n", " ") for text in texts]
-            response = await _get_embedding_client().embeddings.create(
-                input=texts, model=settings.EMBEDDING_MODEL_NAME
-            )
-            return [data.embedding for data in response.data]
+            return await get_embedding_provider().embed(texts)
         except Exception as e:
             logger.error(f"Error getting embeddings: {e}")
             raise e

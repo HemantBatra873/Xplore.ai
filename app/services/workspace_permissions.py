@@ -30,6 +30,8 @@ PERMISSIONS = {
     "knowledge:read": ROLE_RANK[WORKSPACE_ROLE_MEMBER],
     "knowledge:write": ROLE_RANK[WORKSPACE_ROLE_MEMBER],
     "knowledge:admin": ROLE_RANK[WORKSPACE_ROLE_ADMIN],
+    "conversations:read": ROLE_RANK[WORKSPACE_ROLE_MEMBER],
+    "conversations:write": ROLE_RANK[WORKSPACE_ROLE_MEMBER],
 }
 
 

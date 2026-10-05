@@ -17,13 +17,41 @@ export interface AuthState {
   isAuthenticated: boolean
 }
 
+export interface Conversation {
+  id: number
+  workspace_id: number
+  created_by_id: number
+  title: string
+  use_knowledge: boolean
+  knowledge_base_ids: number[]
+  created_at: string
+  updated_at: string
+}
+
+export interface ConversationDetail extends Conversation {
+  messages: ConversationMessage[]
+}
+
+export interface ConversationMessage {
+  id: number
+  conversation_id: number
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  status: string
+  error_message?: string | null
+  citations: CitationSource[]
+  created_at: string
+}
+
 export interface Message {
   id: string
   role: 'user' | 'assistant' | 'system'
   content: string
   reasoning?: string
   tool_calls?: ToolCall[]
+  citations?: CitationSource[]
   timestamp: number
+  serverId?: number
 }
 
 export interface ToolCall {

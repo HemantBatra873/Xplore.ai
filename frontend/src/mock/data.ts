@@ -8,6 +8,8 @@ import type {
   Workspace,
   KnowledgeBase,
   CitationSource,
+  Conversation,
+  ConversationMessage,
 } from '@/types'
 
 const NOW = new Date().toISOString()
@@ -36,6 +38,42 @@ const mockDocuments: Document[] = [
   { id: 3, filename: 'API Reference.txt', file_type: 'txt', status: 'processing', chunks_count: 0, workspace_id: 1, knowledge_base_id: 1, processing_task_id: 'task-abc', error_message: null, created_at: NOW },
   { id: 4, filename: 'Design Notes.md', file_type: 'md', status: 'failed', chunks_count: 0, workspace_id: 1, knowledge_base_id: 1, processing_task_id: null, error_message: 'Embedding failed: dimension mismatch', created_at: daysAgo(3) },
 ]
+
+const mockConversations: Conversation[] = [
+  {
+    id: 1,
+    workspace_id: 1,
+    created_by_id: 1,
+    title: 'Getting started with Xplore.ai',
+    use_knowledge: true,
+    knowledge_base_ids: [1],
+    created_at: daysAgo(1),
+    updated_at: NOW,
+  },
+]
+
+const mockConversationMessages: Record<number, ConversationMessage[]> = {
+  1: [
+    {
+      id: 1,
+      conversation_id: 1,
+      role: 'user',
+      content: 'What can I do with the knowledge base?',
+      status: 'complete',
+      citations: [],
+      created_at: daysAgo(1),
+    },
+    {
+      id: 2,
+      conversation_id: 1,
+      role: 'assistant',
+      content: 'You can upload documents and ask grounded questions. Citations appear under assistant replies.',
+      status: 'complete',
+      citations: [],
+      created_at: daysAgo(1),
+    },
+  ],
+}
 
 const mockKnowledgeBases: KnowledgeBase[] = [
   {
@@ -216,7 +254,77 @@ const MOCK_RESPONSES: MockEntry[] = [
   { method: 'GET', path: '/users/me', handler: () => mockUser },
   { method: 'PUT', path: '/users/me/llm-config', handler: (data) => ({ ...mockUser, has_custom_llm_key: !!(data as Record<string, unknown>)?.api_key }) },
   { method: 'PUT', path: '/users/me/password', handler: () => ({ message: 'Password changed successfully' }) },
-  { method: 'GET', path: '/chat/', handler: () => ({ reply: 'This is an offline mock response for frontend development.' }) },
+  { method: 'POST', path: '/chat/', handler: () => ({ reply: 'This is an offline mock response for frontend development.' }) },
+  { method: 'GET', path: '/conversations/', handler: () => mockConversations },
+  { method: 'POST', path: '/conversations/', handler: (data) => {
+    const d = data as { title?: string; use_knowledge?: boolean; knowledge_base_ids?: number[] }
+    const conv: Conversation = {
+      id: Date.now(),
+      workspace_id: 1,
+      created_by_id: mockUser.id,
+      title: d.title || 'New conversation',
+      use_knowledge: !!d.use_knowledge,
+      knowledge_base_ids: d.knowledge_base_ids || [],
+      created_at: NOW,
+      updated_at: NOW,
+    }
+    mockConversations.unshift(conv)
+    mockConversationMessages[conv.id] = []
+    return conv
+  }},
+  { method: 'GET', path: '/conversations/{id}', handler: (_data, url) => {
+    const id = Number((url || '').split('/').filter(Boolean).pop())
+    const conv = mockConversations.find((c) => c.id === id) || mockConversations[0]
+    return { ...conv, messages: mockConversationMessages[id] || [] }
+  }},
+  { method: 'PATCH', path: '/conversations/{id}', handler: (data, url) => {
+    const id = Number((url || '').split('/').filter(Boolean).pop())
+    const conv = mockConversations.find((c) => c.id === id)
+    if (!conv) return { detail: 'Not found' }
+    const d = data as { title?: string; use_knowledge?: boolean; knowledge_base_ids?: number[] }
+    if (d.title !== undefined) conv.title = d.title
+    if (d.use_knowledge !== undefined) conv.use_knowledge = d.use_knowledge
+    if (d.knowledge_base_ids !== undefined) conv.knowledge_base_ids = d.knowledge_base_ids
+    conv.updated_at = NOW
+    return conv
+  }},
+  { method: 'DELETE', path: '/conversations/{id}', handler: (_data, url) => {
+    const id = Number((url || '').split('/').filter(Boolean).pop())
+    const idx = mockConversations.findIndex((c) => c.id === id)
+    if (idx !== -1) mockConversations.splice(idx, 1)
+    delete mockConversationMessages[id]
+    return { message: 'Deleted' }
+  }},
+  { method: 'GET', path: '/conversations/{id}/messages', handler: (_data, url) => {
+    const parts = (url || '').split('/').filter(Boolean)
+    const id = Number(parts[parts.length - 2] === 'messages' ? parts[parts.length - 3] : parts[parts.length - 1])
+    return mockConversationMessages[id] || []
+  }},
+  { method: 'POST', path: '/conversations/{id}/messages', handler: (data, url) => {
+    const id = Number((url || '').split('/').filter(Boolean).slice(-2)[0])
+    const d = data as { content: string }
+    const userMsg: ConversationMessage = {
+      id: Date.now(),
+      conversation_id: id,
+      role: 'user',
+      content: d.content,
+      status: 'complete',
+      citations: [],
+      created_at: NOW,
+    }
+    const assistantMsg: ConversationMessage = {
+      id: Date.now() + 1,
+      conversation_id: id,
+      role: 'assistant',
+      content: 'This is an offline mock assistant reply with optional citations.',
+      status: 'complete',
+      citations: mockCitationSources,
+      created_at: NOW,
+    }
+    if (!mockConversationMessages[id]) mockConversationMessages[id] = []
+    mockConversationMessages[id].push(userMsg, assistantMsg)
+    return { user_message: userMsg, assistant_message: assistantMsg, sources: mockCitationSources }
+  }},
   { method: 'GET', path: '/workspaces/', handler: () => mockWorkspaces },
   { method: 'POST', path: '/workspaces/', handler: (data) => {
     const d = data as { name: string; slug?: string }
