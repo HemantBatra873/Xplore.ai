@@ -403,8 +403,10 @@ class AIOrchestrator:
             system_prompt=system_prompt,
         )
 
-        tool_names = AgentService.enabled_tool_names(agent) if agent else []
-        tools = ToolRegistry.openai_tools_for_names(tool_names)
+        tool_names = AgentService.enabled_tool_names(agent)
+        tools = ToolRegistry.openai_tools_for_names(
+            tool_names, db=self.db, workspace_id=access.workspace.id
+        )
         started_at = start_timer()
         tool_audit: list[dict[str, Any]] = []
         try:
@@ -569,8 +571,10 @@ class AIOrchestrator:
             hits=hits,
             system_prompt=system_prompt,
         )
-        tool_names = AgentService.enabled_tool_names(agent) if agent else []
-        tools = ToolRegistry.openai_tools_for_names(tool_names)
+        tool_names = AgentService.enabled_tool_names(agent)
+        tools = ToolRegistry.openai_tools_for_names(
+            tool_names, db=self.db, workspace_id=access.workspace.id
+        )
         started_at = start_timer()
         tool_audit: list[dict[str, Any]] = []
         full_response = ""

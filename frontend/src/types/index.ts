@@ -68,6 +68,39 @@ export interface ToolInfo {
   requires_workspace: boolean
   requires_user: boolean
   enabled: boolean
+  source?: string
+  integration_id?: number | null
+  integration_name?: string | null
+}
+
+export interface Integration {
+  id: number
+  workspace_id: number
+  created_by_id: number | null
+  type: string
+  name: string
+  description: string | null
+  config: Record<string, unknown>
+  is_enabled: boolean
+  has_credentials: boolean
+  last_error: string | null
+  last_discovered_at: string | null
+  tool_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface IntegrationTool {
+  id: number
+  integration_id: number
+  remote_name: string
+  registry_name: string
+  description: string
+  input_schema: Record<string, unknown>
+  is_enabled: boolean
+  source_type: string
+  integration_name: string
+  discovered_at: string
 }
 
 export interface Message {

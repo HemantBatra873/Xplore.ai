@@ -53,6 +53,9 @@ class ToolInfoOut(BaseModel):
     requires_workspace: bool = False
     requires_user: bool = False
     enabled: bool = True
+    source: str = "internal"
+    integration_id: Optional[int] = None
+    integration_name: Optional[str] = None
 
 
 class AgentKnowledgeUpdate(BaseModel):

@@ -4,7 +4,7 @@ import { IconFile, IconWrench, IconX } from '@/components/ui/Icons'
 import KnowledgePanel from '@/components/knowledge/KnowledgePanel'
 import TasksPanel from '@/components/tasks/TasksPanel'
 
-type Tab = 'knowledge' | 'tasks' | 'agents'
+type Tab = 'knowledge' | 'tasks' | 'agents' | 'integrations'
 
 export default function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [activeTab, setActiveTab] = useState<Tab>('knowledge')
@@ -50,6 +50,17 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
             Agents
           </button>
           <button
+            onClick={() => setActiveTab('integrations')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'integrations'
+                ? 'text-brand-500 border-b-2 border-brand-500'
+                : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
+            }`}
+          >
+            <IconWrench />
+            Integrations
+          </button>
+          <button
             onClick={() => setActiveTab('tasks')}
             className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors ${
               activeTab === 'tasks'
@@ -80,6 +91,17 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
                 onClick={onClose}
               >
                 Open Agents
+              </Link>
+            </div>
+          ) : activeTab === 'integrations' ? (
+            <div className="space-y-3 text-sm text-[var(--text-secondary)]">
+              <p>Connect MCP servers and GitHub. Tools appear in Agent configuration.</p>
+              <Link
+                to="/integrations"
+                className="inline-flex items-center text-brand-500 hover:underline"
+                onClick={onClose}
+              >
+                Open Integrations
               </Link>
             </div>
           ) : (

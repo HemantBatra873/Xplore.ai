@@ -12,6 +12,8 @@ import type {
   ConversationMessage,
   Agent,
   ToolInfo,
+  Integration,
+  IntegrationTool,
 } from '@/types'
 
 const NOW = new Date().toISOString()
@@ -67,6 +69,7 @@ const mockTools: ToolInfo[] = [
     requires_workspace: false,
     requires_user: false,
     enabled: true,
+    source: 'internal',
   },
   {
     name: 'list_tasks',
@@ -75,8 +78,64 @@ const mockTools: ToolInfo[] = [
     requires_workspace: true,
     requires_user: true,
     enabled: true,
+    source: 'internal',
+  },
+  {
+    name: 'ext:1:search_repositories',
+    description: 'Search public GitHub repositories',
+    input_schema: {
+      type: 'object',
+      properties: { query: { type: 'string' } },
+      required: ['query'],
+    },
+    requires_workspace: true,
+    requires_user: true,
+    enabled: true,
+    source: 'github',
+    integration_id: 1,
+    integration_name: 'Demo GitHub',
   },
 ]
+
+const mockIntegrations: Integration[] = [
+  {
+    id: 1,
+    workspace_id: 1,
+    created_by_id: 1,
+    type: 'github',
+    name: 'Demo GitHub',
+    description: 'Read-only GitHub integration',
+    config: {},
+    is_enabled: true,
+    has_credentials: true,
+    last_error: null,
+    last_discovered_at: NOW,
+    tool_count: 1,
+    created_at: daysAgo(1),
+    updated_at: NOW,
+  },
+]
+
+const mockIntegrationTools: Record<number, IntegrationTool[]> = {
+  1: [
+    {
+      id: 1,
+      integration_id: 1,
+      remote_name: 'search_repositories',
+      registry_name: 'ext:1:search_repositories',
+      description: 'Search public GitHub repositories',
+      input_schema: {
+        type: 'object',
+        properties: { query: { type: 'string' } },
+        required: ['query'],
+      },
+      is_enabled: true,
+      source_type: 'github',
+      integration_name: 'Demo GitHub',
+      discovered_at: NOW,
+    },
+  ],
+}
 
 const mockConversations: Conversation[] = [
   {
@@ -368,6 +427,95 @@ const MOCK_RESPONSES: MockEntry[] = [
     const idx = mockAgents.findIndex((a) => a.id === id)
     if (idx !== -1) mockAgents.splice(idx, 1)
     return { message: 'Deleted' }
+  }},
+  { method: 'GET', path: '/integrations/types', handler: () => ({ types: ['mcp', 'github'] }) },
+  { method: 'GET', path: '/integrations/', handler: () => mockIntegrations },
+  { method: 'POST', path: '/integrations/', handler: (data) => {
+    const d = data as Partial<Integration> & { credentials?: Record<string, unknown> }
+    const item: Integration = {
+      id: Date.now(),
+      workspace_id: 1,
+      created_by_id: mockUser.id,
+      type: d.type || 'github',
+      name: d.name || 'New integration',
+      description: d.description ?? null,
+      config: d.config || {},
+      is_enabled: d.is_enabled ?? true,
+      has_credentials: Boolean(d.credentials),
+      last_error: null,
+      last_discovered_at: null,
+      tool_count: 0,
+      created_at: NOW,
+      updated_at: NOW,
+    }
+    mockIntegrations.push(item)
+    mockIntegrationTools[item.id] = []
+    return item
+  }},
+  { method: 'GET', path: '/integrations/{id}', handler: (_data, url) => {
+    const id = Number((url || '').split('/').filter(Boolean).pop())
+    return mockIntegrations.find((i) => i.id === id) || mockIntegrations[0]
+  }},
+  { method: 'PUT', path: '/integrations/{id}', handler: (data, url) => {
+    const id = Number((url || '').split('/').filter(Boolean).pop())
+    const item = mockIntegrations.find((i) => i.id === id)
+    if (!item) return { detail: 'Not found' }
+    const d = data as Partial<Integration> & { credentials?: Record<string, unknown> }
+    const { credentials, ...rest } = d
+    Object.assign(item, rest, {
+      updated_at: NOW,
+      has_credentials: credentials ? true : item.has_credentials,
+    })
+    return item
+  }},
+  { method: 'DELETE', path: '/integrations/{id}', handler: (_data, url) => {
+    const id = Number((url || '').split('/').filter(Boolean).pop())
+    const idx = mockIntegrations.findIndex((i) => i.id === id)
+    if (idx !== -1) mockIntegrations.splice(idx, 1)
+    delete mockIntegrationTools[id]
+    return { message: 'Deleted' }
+  }},
+  { method: 'POST', path: '/integrations/{id}/connect', handler: (_data, url) => {
+    const parts = (url || '').split('/').filter(Boolean)
+    const id = Number(parts[parts.length - 2])
+    const item = mockIntegrations.find((i) => i.id === id)
+    if (!item) return { detail: 'Not found' }
+    item.tool_count = (mockIntegrationTools[id] || []).length || 1
+    item.last_discovered_at = NOW
+    item.updated_at = NOW
+    if (!mockIntegrationTools[id]?.length) {
+      mockIntegrationTools[id] = [
+        {
+          id: Date.now(),
+          integration_id: id,
+          remote_name: 'search_repositories',
+          registry_name: `ext:${id}:search_repositories`,
+          description: 'Search repositories',
+          input_schema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] },
+          is_enabled: true,
+          source_type: item.type,
+          integration_name: item.name,
+          discovered_at: NOW,
+        },
+      ]
+      item.tool_count = 1
+    }
+    return item
+  }},
+  { method: 'POST', path: '/integrations/{id}/refresh-tools', handler: (_data, url) => {
+    const parts = (url || '').split('/').filter(Boolean)
+    const id = Number(parts[parts.length - 2])
+    const item = mockIntegrations.find((i) => i.id === id)
+    if (!item) return { detail: 'Not found' }
+    item.last_discovered_at = NOW
+    item.updated_at = NOW
+    item.tool_count = (mockIntegrationTools[id] || []).length
+    return item
+  }},
+  { method: 'GET', path: '/integrations/{id}/tools', handler: (_data, url) => {
+    const parts = (url || '').split('/').filter(Boolean)
+    const id = Number(parts[parts.length - 2])
+    return mockIntegrationTools[id] || []
   }},
   { method: 'DELETE', path: '/conversations/{id}', handler: (_data, url) => {
     const id = Number((url || '').split('/').filter(Boolean).pop())

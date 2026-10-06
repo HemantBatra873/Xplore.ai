@@ -13,7 +13,7 @@ from app.schemas.agent import (
     ToolInfoOut,
 )
 from app.services.agent_service import AgentService
-from app.services.tool_registry import ToolRegistry, parse_tool_names
+from app.services.tool_registry import ToolRegistry
 from app.services.workspace_service import WorkspaceAccess
 
 router = APIRouter()
@@ -46,8 +46,13 @@ def _agent_out(agent) -> AgentOut:
     )
 
 
-@router.get("/tools", response_model=list[ToolInfoOut], summary="List available built-in tools")
+@router.get(
+    "/tools",
+    response_model=list[ToolInfoOut],
+    summary="List available internal and integration tools",
+)
 async def list_tools(
+    db: Session = Depends(get_db),
     access: WorkspaceAccess = Depends(get_workspace_access),
 ):
     access.require_permission("tools:use")
@@ -59,8 +64,13 @@ async def list_tools(
             requires_workspace=d.requires_workspace,
             requires_user=d.requires_user,
             enabled=d.enabled,
+            source=d.source,
+            integration_id=d.integration_id,
+            integration_name=d.integration_name,
         )
-        for d in ToolRegistry.list_definitions()
+        for d in ToolRegistry.list_definitions(
+            db=db, workspace_id=access.workspace.id
+        )
     ]
 
 

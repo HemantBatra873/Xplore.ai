@@ -70,8 +70,14 @@ class AgentService:
             )
 
     @classmethod
-    def _validate_tools(cls, tool_names: list[str]) -> None:
-        known = {d.name for d in ToolRegistry.list_definitions()}
+    def _validate_tools(
+        cls, db: Session, *, workspace_id: int, tool_names: list[str]
+    ) -> set[str]:
+        known = {
+            d.name
+            for d in ToolRegistry.list_definitions(db=db, workspace_id=workspace_id)
+            if d.enabled
+        }
         unknown = [n for n in tool_names if n not in known]
         if unknown:
             raise AppException(
@@ -79,6 +85,7 @@ class AgentService:
                 msg=f"Unknown tools: {', '.join(unknown)}",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
+        return known
 
     @classmethod
     def _set_knowledge_links(
@@ -113,7 +120,9 @@ class AgentService:
         cls._validate_kbs(
             db, workspace_id=access.workspace.id, knowledge_base_ids=payload.knowledge_base_ids
         )
-        cls._validate_tools(payload.enabled_tools)
+        known = cls._validate_tools(
+            db, workspace_id=access.workspace.id, tool_names=payload.enabled_tools
+        )
 
         agent = Agent(
             workspace_id=access.workspace.id,
@@ -124,7 +133,7 @@ class AgentService:
             provider=payload.provider,
             model_name=payload.model_name,
             is_enabled=payload.is_enabled,
-            enabled_tools=serialize_tool_names(payload.enabled_tools),
+            enabled_tools=serialize_tool_names(payload.enabled_tools, known=known),
         )
         db.add(agent)
         db.flush()
@@ -177,8 +186,10 @@ class AgentService:
         if "is_enabled" in data and data["is_enabled"] is not None:
             agent.is_enabled = bool(data["is_enabled"])
         if "enabled_tools" in data and data["enabled_tools"] is not None:
-            cls._validate_tools(data["enabled_tools"])
-            agent.enabled_tools = serialize_tool_names(data["enabled_tools"])
+            known = cls._validate_tools(
+                db, workspace_id=access.workspace.id, tool_names=data["enabled_tools"]
+            )
+            agent.enabled_tools = serialize_tool_names(data["enabled_tools"], known=known)
         if "knowledge_base_ids" in data and data["knowledge_base_ids"] is not None:
             cls._validate_kbs(
                 db,
@@ -241,5 +252,7 @@ class AgentService:
         return sorted({link.knowledge_base_id for link in (agent.knowledge_links or [])})
 
     @classmethod
-    def enabled_tool_names(cls, agent: Agent) -> list[str]:
+    def enabled_tool_names(cls, agent: Optional[Agent]) -> list[str]:
+        if agent is None:
+            return []
         return parse_tool_names(agent.enabled_tools)

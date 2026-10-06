@@ -10,6 +10,7 @@ import SetupPage from '@/pages/SetupPage'
 import ChatPage from '@/pages/ChatPage'
 import KnowledgePage from '@/pages/KnowledgePage'
 import AgentsPage from '@/pages/AgentsPage'
+import IntegrationsPage from '@/pages/IntegrationsPage'
 import TasksPage from '@/pages/TasksPage'
 import SettingsPage from '@/pages/SettingsPage'
 import HealthPage from '@/pages/HealthPage'
@@ -62,6 +63,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <AgentsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/integrations"
+                  element={
+                    <ProtectedRoute>
+                      <IntegrationsPage />
                     </ProtectedRoute>
                   }
                 />

@@ -1,5 +1,15 @@
 # Change Log
 
+## Phase 6: MCP & External Integrations
+
+- Added workspace-scoped `Integration` / `IntegrationTool` models with Alembic migration `b3c8d5e6f7a8`.
+- Introduced `IntegrationAdapter` framework with MCP HTTP JSON-RPC transport and read-only GitHub adapter.
+- Extended `ToolRegistry` to discover/execute `ext:{integration_id}:{tool}` tools alongside internal MCPService tools.
+- Credentials encrypted with existing Fernet helpers; never returned in API responses (`has_credentials` only).
+- Added `/api/v1/integrations` CRUD + connect/refresh-tools; permissions `integrations:read|manage`.
+- Frontend Integrations page; Agents tool list shows integration sources; mock mode coverage.
+- Added `tests/test_integrations.py`; `httpx` added to `requirements.txt`.
+
 ## Phase 5: Agents & Tools
 
 - Added workspace-scoped `Agent` and `AgentKnowledgeBase` models with Alembic migration `a2b7c4d5e6f7`.
@@ -52,4 +62,4 @@
 - Preserved current chat, task, document, RAG, background processing, authentication, mock mode, and observability behavior.
 - Added `MIGRATION_CONTEXT.md` as the migration handoff record.
 
-Phase 6+ features (external integrations, MCP transport, automation) remain out of scope until their phase.
+Phase 7+ features (automation platforms, multi-agent orchestration, broad connectors) remain out of scope until their phase.

@@ -308,6 +308,10 @@ export default function AgentsPage() {
                       <span className="text-sm text-[var(--text-primary)] font-medium">
                         {tool.name}
                       </span>
+                      <span className="block text-[10px] text-[var(--text-tertiary)] uppercase tracking-wide">
+                        {tool.source || 'internal'}
+                        {tool.integration_name ? ` · ${tool.integration_name}` : ''}
+                      </span>
                       <span className="block text-xs text-[var(--text-tertiary)]">
                         {tool.description}
                       </span>

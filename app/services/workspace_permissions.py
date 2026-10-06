@@ -35,6 +35,8 @@ PERMISSIONS = {
     "agents:read": ROLE_RANK[WORKSPACE_ROLE_MEMBER],
     "agents:manage": ROLE_RANK[WORKSPACE_ROLE_ADMIN],
     "tools:use": ROLE_RANK[WORKSPACE_ROLE_MEMBER],
+    "integrations:read": ROLE_RANK[WORKSPACE_ROLE_MEMBER],
+    "integrations:manage": ROLE_RANK[WORKSPACE_ROLE_ADMIN],
 }
 
 
