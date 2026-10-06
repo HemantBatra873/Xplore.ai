@@ -1,9 +1,10 @@
+from fastapi import status
+
 from app.models.integration import INTEGRATION_TYPE_GITHUB, INTEGRATION_TYPE_MCP
 from app.services.integrations.base import IntegrationAdapter
 from app.services.integrations.github_adapter import GitHubIntegrationAdapter
 from app.services.integrations.mcp_adapter import MCPIntegrationAdapter
 from app.utils.errors import AppException
-from fastapi import status
 
 _ADAPTERS: dict[str, IntegrationAdapter] = {
     INTEGRATION_TYPE_MCP: MCPIntegrationAdapter(),

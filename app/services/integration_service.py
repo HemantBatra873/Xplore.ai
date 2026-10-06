@@ -230,9 +230,7 @@ class IntegrationService:
         )
 
     @classmethod
-    def delete(
-        cls, db: Session, *, access: WorkspaceAccess, integration_id: int
-    ) -> Integration:
+    def delete(cls, db: Session, *, access: WorkspaceAccess, integration_id: int) -> Integration:
         access.require_permission("integrations:manage")
         integration = cls.get_for_workspace(
             db, integration_id=integration_id, workspace_id=access.workspace.id
@@ -295,9 +293,7 @@ class IntegrationService:
         )
 
     @classmethod
-    def connect(
-        cls, db: Session, *, access: WorkspaceAccess, integration_id: int
-    ) -> Integration:
+    def connect(cls, db: Session, *, access: WorkspaceAccess, integration_id: int) -> Integration:
         """Validate connectivity and refresh tools."""
         return cls.refresh_tools(db, access=access, integration_id=integration_id)
 
@@ -321,7 +317,9 @@ class IntegrationService:
             .where(Integration.workspace_id == workspace_id)
         )
         if enabled_only:
-            stmt = stmt.where(Integration.is_enabled.is_(True), IntegrationTool.is_enabled.is_(True))
+            stmt = stmt.where(
+                Integration.is_enabled.is_(True), IntegrationTool.is_enabled.is_(True)
+            )
         return list(db.execute(stmt).all())
 
     @classmethod

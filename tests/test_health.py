@@ -18,7 +18,13 @@ def test_health_check_returns_dependencies(client):
 
 def test_root_endpoint(client):
     response = client.get("/")
-    # Root may return JSON welcome (no frontend build) or 404 (static mount)
+    # With a frontend build present, "/" serves the SPA (HTML).
+    # Without static assets, the API returns a JSON welcome payload.
     assert response.status_code in (200, 404)
-    if response.status_code == 200:
+    if response.status_code != 200:
+        return
+    content_type = response.headers.get("content-type", "")
+    if "application/json" in content_type:
         assert "Welcome" in response.json()["message"]
+    else:
+        assert "html" in content_type.lower() or "<!doctype html>" in response.text.lower()

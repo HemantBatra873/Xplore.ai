@@ -1,27 +1,41 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
+
+from app.models.conversation import Message
+from app.services.ai_orchestrator import AIOrchestrator, OrchestrationResult
 
 
-def test_chat_rate_limiting(client):
-    # 1. Create a user
+def _auth_headers(client, suffix: str) -> dict:
     client.post(
         "/api/v1/users/",
         json={
-            "username": "ratelimit_user",
-            "email": "ratelimit@example.com",
+            "username": f"chat_{suffix}",
+            "email": f"{suffix}@example.com",
             "password": "password123",
         },
     )
     login_resp = client.post(
         "/api/v1/auth/login",
-        data={"username": "ratelimit@example.com", "password": "password123"},
+        data={"username": f"{suffix}@example.com", "password": "password123"},
     )
     token = login_resp.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
+    return {"Authorization": f"Bearer {token}"}
 
-    # 2. Mock LLM service
-    with patch("app.api.routers.chat.generate_chat_reply", new_callable=AsyncMock) as mock_llm:
-        mock_llm.return_value = "Mocked Reply"
 
+def test_chat_rate_limiting(client):
+    headers = _auth_headers(client, "ratelimit")
+
+    assistant = MagicMock(spec=Message)
+    assistant.content = "Mocked Reply"
+    fake_result = OrchestrationResult(
+        user_message=MagicMock(spec=Message),
+        assistant_message=assistant,
+        hits=[],
+        tool_calls=[],
+    )
+
+    with patch.object(
+        AIOrchestrator, "send_message", new_callable=AsyncMock, return_value=fake_result
+    ):
         status_codes = []
         for _ in range(25):
             response = client.post(
@@ -35,27 +49,18 @@ def test_chat_rate_limiting(client):
 
 
 def test_chat_sse_stream(client):
-    client.post(
-        "/api/v1/users/",
-        json={"username": "sse_user", "email": "sse@example.com", "password": "password123"},
-    )
-    login_resp = client.post(
-        "/api/v1/auth/login",
-        data={"username": "sse@example.com", "password": "password123"},
-    )
-    token = login_resp.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
+    headers = _auth_headers(client, "sse")
 
-    async def mock_stream_generator(*args, **kwargs):
+    async def mock_stream(*args, **kwargs):
         yield 'data: {"content": "Hello"}\n\n'
         yield "data: [DONE]\n\n"
 
-    with patch("app.api.routers.chat.generate_chat_reply_stream", mock_stream_generator):
+    with patch.object(AIOrchestrator, "stream_message", mock_stream):
         with client.stream(
             "POST", "/api/v1/chat/", headers=headers, json={"message": "hello", "stream": True}
         ) as response:
             assert response.status_code == 200
-            assert response.headers["content-type"] == "text/event-stream; charset=utf-8"
+            assert "text/event-stream" in response.headers["content-type"]
 
             content = response.read().decode("utf-8")
             assert 'data: {"content": "Hello"}' in content

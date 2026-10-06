@@ -1,5 +1,14 @@
 # Change Log
 
+## Phase 7: Final Hardening & Release Readiness
+
+- Installed/validated Python 3.12 + Docker; Compose Postgres published on host port 5433.
+- Alembic head `c4d9e6f7a8b9` (nullable `workspaces.created_by_id` with `ON DELETE SET NULL`).
+- Fixed ToolRegistry handler discovery, user-delete workspace cleanup, chat tests, health root test.
+- Removed startup `create_all()`; schema ownership is Alembic-only.
+- Frontend lint PASS (ESLint config + empty-catch fixes); README rewritten for Xplore.ai.
+- Dockerfile/CI target Python 3.12; `pytest` 179 passed (SQLite + Postgres test DB).
+
 ## Phase 6: MCP & External Integrations
 
 - Added workspace-scoped `Integration` / `IntegrationTool` models with Alembic migration `b3c8d5e6f7a8`.

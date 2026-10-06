@@ -18,5 +18,20 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // Mount/data-fetch effects and form sync from selected entities are intentional.
+      'react-hooks/set-state-in-effect': 'off',
+      // Context modules export hooks alongside providers by design.
+      'react-refresh/only-export-components': [
+        'warn',
+        { allowConstantExport: true },
+      ],
+    },
+  },
+  {
+    files: ['**/contexts/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
   },
 ])

@@ -26,7 +26,9 @@ class User(Base):
 
     # Preferred workspace for clients that omit X-Workspace-Id
     default_workspace_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("workspaces.id", use_alter=True, name="fk_users_default_workspace_id"), nullable=True
+        Integer,
+        ForeignKey("workspaces.id", use_alter=True, name="fk_users_default_workspace_id"),
+        nullable=True,
     )
 
     # Optional per-user LLM settings (multi-tenant BYOK)

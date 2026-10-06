@@ -61,7 +61,8 @@ class ToolRegistry:
 
     @classmethod
     def _internal_definitions(cls) -> list[ToolDefinition]:
-        handlers = {h["name"]: h for h in MCPService.list_handlers()}
+        # list_handlers() returns {tool_name: metadata_dict}
+        handlers = MCPService.list_handlers()
         definitions: list[ToolDefinition] = []
         for item in MCPService.list_tools():
             fn = item.get("function") or {}
@@ -83,9 +84,7 @@ class ToolRegistry:
         return definitions
 
     @classmethod
-    def _integration_definitions(
-        cls, db: Session, workspace_id: int
-    ) -> list[ToolDefinition]:
+    def _integration_definitions(cls, db: Session, workspace_id: int) -> list[ToolDefinition]:
         from app.services.integration_service import IntegrationService
 
         definitions: list[ToolDefinition] = []
@@ -164,7 +163,9 @@ class ToolRegistry:
         ]
 
     @classmethod
-    def validate_arguments(cls, definition: ToolDefinition, arguments: dict[str, Any]) -> dict[str, Any]:
+    def validate_arguments(
+        cls, definition: ToolDefinition, arguments: dict[str, Any]
+    ) -> dict[str, Any]:
         schema = definition.input_schema or {}
         properties = schema.get("properties") or {}
         required = schema.get("required") or []

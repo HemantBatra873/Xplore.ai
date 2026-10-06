@@ -43,9 +43,7 @@ class MockLLMProvider(LLMProvider):
         temperature: float = 0.2,
         **kwargs: Any,
     ) -> AsyncIterator[LLMStreamChunk]:
-        content = (
-            "This is a streamed mock response. Xplore.ai is running offline without a live LLM provider."
-        )
+        content = "This is a streamed mock response. Xplore.ai is running offline without a live LLM provider."
         for char in content:
             yield LLMStreamChunk(content=char)
             await asyncio.sleep(0.01)

@@ -68,9 +68,7 @@ async def list_tools(
             integration_id=d.integration_id,
             integration_name=d.integration_name,
         )
-        for d in ToolRegistry.list_definitions(
-            db=db, workspace_id=access.workspace.id
-        )
+        for d in ToolRegistry.list_definitions(db=db, workspace_id=access.workspace.id)
     ]
 
 
@@ -96,9 +94,7 @@ async def create_agent(
     access: WorkspaceAccess = Depends(get_workspace_access),
 ):
     user = _current_user(db, access)
-    agent = AgentService.create(
-        db, access=access, payload=payload, created_by_id=user.id
-    )
+    agent = AgentService.create(db, access=access, payload=payload, created_by_id=user.id)
     return _agent_out(agent)
 
 
@@ -109,9 +105,7 @@ async def get_agent(
     access: WorkspaceAccess = Depends(get_workspace_access),
 ):
     access.require_permission("agents:read")
-    agent = AgentService.get_for_workspace(
-        db, agent_id=agent_id, workspace_id=access.workspace.id
-    )
+    agent = AgentService.get_for_workspace(db, agent_id=agent_id, workspace_id=access.workspace.id)
     return _agent_out(agent)
 
 

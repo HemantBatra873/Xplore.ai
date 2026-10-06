@@ -131,9 +131,7 @@ def test_spoofed_document_id_cannot_cross_workspace(client, db_session):
     token_a, user_a = _register_and_login(client, "kb-spoof-a")
     token_b, _ = _register_and_login(client, "kb-spoof-b")
     ws_a = _default_workspace(client, token_a)
-    kb_a = client.get(
-        "/api/v1/knowledge-bases/", headers=_auth(token_a, ws_a["id"])
-    ).json()[0]
+    kb_a = client.get("/api/v1/knowledge-bases/", headers=_auth(token_a, ws_a["id"])).json()[0]
 
     doc = Document(
         owner_id=user_a["id"],
@@ -226,9 +224,7 @@ def test_backfill_helper_creates_default_kb(db_session):
     assert kb.name == "General"
     count = int(
         db_session.execute(
-            select(func.count(KnowledgeBase.id)).where(
-                KnowledgeBase.workspace_id == workspace.id
-            )
+            select(func.count(KnowledgeBase.id)).where(KnowledgeBase.workspace_id == workspace.id)
         ).scalar_one()
     )
     assert count >= 1

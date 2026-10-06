@@ -9,9 +9,7 @@ from app.utils.errors import AppException
 
 class TaskService:
     @staticmethod
-    def create_task(
-        db: Session, task_in: TaskCreate, owner_id: int, workspace_id: int
-    ) -> Task:
+    def create_task(db: Session, task_in: TaskCreate, owner_id: int, workspace_id: int) -> Task:
         """Create a new task in a workspace."""
         new_task = Task(
             title=task_in.title,
@@ -54,9 +52,7 @@ class TaskService:
         return task
 
     @staticmethod
-    def update_task(
-        db: Session, task_id: int, workspace_id: int, task_in: TaskUpdate
-    ) -> Task:
+    def update_task(db: Session, task_id: int, workspace_id: int, task_in: TaskUpdate) -> Task:
         """Update a task in a workspace."""
         task = TaskService.get_task(db, task_id, workspace_id)
 

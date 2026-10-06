@@ -28,9 +28,7 @@ class EmbeddingProvider:
         if not texts:
             return []
         cleaned = [text.replace("\n", " ") for text in texts]
-        response = await self._client.embeddings.create(
-            input=cleaned, model=self.model_name
-        )
+        response = await self._client.embeddings.create(input=cleaned, model=self.model_name)
         return [item.embedding for item in response.data]
 
 

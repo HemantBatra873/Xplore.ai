@@ -32,9 +32,7 @@ class Conversation(Base):
     workspace_id: Mapped[int] = mapped_column(
         ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    created_by_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id"), nullable=False, index=True
-    )
+    created_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False, default="New conversation")
     use_knowledge: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # Comma-separated knowledge base IDs; empty means all workspace KBs when use_knowledge is true

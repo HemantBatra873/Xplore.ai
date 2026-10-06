@@ -1,108 +1,151 @@
 # Xplore.ai
 
-Xplore.ai is a full-stack AI application foundation built with FastAPI and React. Phase 1 preserves the existing chat, task, document, RAG, authentication, and observability capabilities while removing the original starter identity. Future product features are intentionally deferred.
+Xplore.ai is an AI knowledge workspace: multi-tenant workspaces, knowledge bases with hybrid RAG, persistent conversations, configurable agents, controlled tools, and MCP/external integrations — with a single AI execution path through `AIOrchestrator`.
 
-## Stack
+## What it is
 
-- FastAPI, SQLAlchemy 2, Alembic, and Pydantic
-- PostgreSQL with pgvector
-- Redis and Celery for sessions, rate limiting, and background document processing
-- OpenAI-compatible providers or Ollama
-- React, TypeScript, Vite, Tailwind CSS, and Recharts
-- Prometheus, Grafana, and Flower
+- **Workspaces** with owner/admin/member roles and scoped authorization
+- **Knowledge bases** with document ingestion, pgvector retrieval, hybrid search, optional reranking, and citations
+- **Conversations** with persisted messages, streaming, and knowledge grounding
+- **Agents** that bind system prompts, models, knowledge bases, and tools
+- **ToolRegistry** for internal tools, MCP HTTP tools, and integrations (e.g. read-only GitHub)
+- **Multiple LLM providers** (OpenAI, Anthropic, Gemini, DeepSeek, Ollama, OpenAI-compatible) plus explicit mock mode
 
-## Current Capabilities
-
-- JWT authentication with user-level data isolation
-- Synchronous and SSE-streaming chat
-- OpenAI-compatible tool calling for tasks, weather, system status, task lists, and calculations
-- TXT, Markdown, and PDF document ingestion
-- Asynchronous chunking and embedding with pgvector retrieval
-- Optional BGE reranking
-- Redis-backed RAG session history
-- Per-user encrypted LLM provider keys
-- LLM call logs with token, latency, and estimated cost data
-- Frontend mock mode for offline UI development
-
-Workspaces, agents, new retrieval architecture, and external integrations are Phase 2+ concerns and are not implemented here.
-
-## Repository Layout
+## Architecture
 
 ```text
-app/                 FastAPI application, services, models, schemas, and workers
-alembic/              Database migrations
-frontend/             React SPA
-tests/                Backend tests
-scripts/              Bootstrap, seed, E2E, evaluation, and load-test utilities
-grafana/              Monitoring dashboards and provisioning
-docs/                 Architecture and change documentation
+                              Xplore.ai
+                                   │
+                              Workspace
+                                   │
+             ┌─────────────────────┼─────────────────────┐
+             │                     │                     │
+         Knowledge             Conversations           Agents
+             │                     │                     │
+       Documents/Chunks        Messages          Model/System Prompt
+             │                     │                     │
+             └──────────────┬──────┴─────────────────────┘
+                            │
+                     AIOrchestrator
+                            │
+             ┌──────────────┼──────────────┐
+             │              │              │
+        Retrieval       ToolRegistry    LLM Providers
+             │              │              │
+        pgvector       Internal / MCP / GitHub
+        Keyword
+        Reranking
 ```
 
-The Python import package remains `app`. This is deliberate: changing it would create unnecessary runtime and migration risk during the identity cleanup.
+The Python import package remains `app` by design (renaming would add unnecessary migration risk).
 
-## Quick Start
+## Tech stack
 
-Prerequisites: Docker Compose v2 and, optionally, Ollama for local models.
+| Layer | Technologies |
+|-------|----------------|
+| API | FastAPI, SQLAlchemy 2, Alembic, Pydantic, Celery |
+| Data | PostgreSQL + pgvector, Redis |
+| Frontend | React, TypeScript, Vite, Tailwind CSS |
+| Observability | Prometheus, Grafana, Flower, structured logs / request IDs |
+| Runtime | Docker Compose, Python 3.12 |
+
+## Prerequisites
+
+- Docker Compose v2 (recommended for full stack)
+- Or locally: Python 3.12+, Node.js 20+, PostgreSQL 15 with pgvector, Redis 7
+
+## Local development (Docker)
 
 ```bash
 cp .env.example .env
-# Set a strong SECRET_KEY. Leave LLM_API_KEY empty for mock mode.
+# Set a strong SECRET_KEY (required). Leave LLM_API_KEY empty to use LLM mock mode.
 docker compose up -d --build
 ```
 
-The application is available at <http://localhost:8000>. API documentation is at <http://localhost:8000/docs>.
-
-Optional services:
+App: <http://localhost:8000> · API docs: <http://localhost:8000/docs>
 
 ```bash
-docker compose --profile full up -d
-# Adds Ollama
-
-docker compose --profile monitor up -d
-# Adds Prometheus, Grafana, and Flower
+docker compose --profile full up -d     # + Ollama
+docker compose --profile monitor up -d  # + Prometheus / Grafana / Flower
+make seed                               # demo@example.com / demo123456 (local only)
 ```
 
-Useful commands:
+## Local development (host Python + frontend)
 
 ```bash
-make setup         # Initialize environment and start the stack
-make up            # Start core services
-make up-full       # Start all services
-make test          # Run backend tests
-make seed          # Create the local starter account and sample records
-make logs          # Follow API logs
-make down          # Stop services
-```
+# Infrastructure (Postgres published on localhost:5433 to avoid host Postgres conflicts)
+docker compose up -d db redis
 
-The seed command creates `demo@example.com` with password `demo123456` for local development only. Do not use these credentials outside a local environment.
+# Backend
+python -m venv .venv
+# Windows: .\.venv\Scripts\activate
+# macOS/Linux: source .venv/bin/activate
+pip install -r requirements-dev.txt
+# DATABASE_URL should use localhost:5433 (see .env.example)
+alembic upgrade head
+uvicorn app.main:app --reload --port 8000
 
-## Frontend Development
-
-```bash
+# Frontend
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
-The Vite development server uses the API at `/api/v1`. Set `VITE_USE_MOCK=true` for offline UI development. Production builds are generated with `npm run build` and are included in the Docker image.
+Set `VITE_USE_MOCK=true` for offline UI development against mock handlers. Production frontend builds are served from the API image (`npm run build` → `app/static`).
 
-## Validation
+## Configuration
+
+See `.env.example`. Important variables:
+
+| Variable | Purpose |
+|----------|---------|
+| `SECRET_KEY` | JWT + Fernet encryption key material (must not use the default in production) |
+| `DATABASE_URL` | PostgreSQL URL (`postgresql+psycopg://...`) |
+| `REDIS_URL` | Redis for rate limits / Celery / caches |
+| `LLM_PROVIDER` / `LLM_API_KEY` / `LLM_MODEL_NAME` | Chat provider |
+| `LLM_MOCK` | Explicit canned LLM responses; also auto-enabled when `LLM_API_KEY` is empty |
+| `EMBEDDING_*` | Embedding endpoint/model/dimension (independent of chat) |
+
+Provider API keys and integration credentials are stored encrypted server-side and are never returned by normal API responses. Users may also configure BYOK keys in Settings.
+
+## Testing
 
 ```bash
-python -m pytest -q
+# Backend (from repo root, with venv active)
+pytest
+# or: python -m pytest -q
+
+# Frontend
 cd frontend
-npm run build
+npm ci
 npm run lint
+npm run build
 ```
+
+CI runs ruff + pytest against PostgreSQL/Redis service containers (see `.github/workflows/ci.yml`).
+
+## Project structure
+
+```text
+app/                 FastAPI routers, services, models, schemas, workers
+alembic/             Database migrations (workspace → knowledge → conversations → agents → integrations)
+frontend/            React SPA
+tests/               Backend test suite
+scripts/             Bootstrap, seed, E2E helpers
+grafana/             Dashboards and provisioning
+docs/                Architecture notes and change log
+MIGRATION_CONTEXT.md Migration phase handoff record
+```
+
+## Current limitations
+
+- MCP transport is HTTP JSON-RPC only (not full MCP SDK / stdio / SSE)
+- GitHub integration is read-only (token/PAT; no OAuth platform)
+- Streaming + tools: tool rounds complete non-stream, then the final answer is streamed
+- Document embeddings typically require a reachable embedding provider (e.g. Ollama)
 
 ## Documentation
 
 - [Architecture guide](docs/CODE_WIKI.md)
 - [Change log](docs/changes.md)
-- [Frontend guide](frontend/README.md)
-- [Contribution guide](CONTRIBUTING.md)
-- [Phase 1 migration context](MIGRATION_CONTEXT.md)
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
+- [Migration context](MIGRATION_CONTEXT.md)

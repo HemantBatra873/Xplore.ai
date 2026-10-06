@@ -73,9 +73,7 @@ async def get_workspace(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    access = WorkspaceService.get_workspace_access(
-        db, workspace_id=workspace_id, user=current_user
-    )
+    access = WorkspaceService.get_workspace_access(db, workspace_id=workspace_id, user=current_user)
     access.require_permission("workspace:read")
     return _to_workspace_out(access.workspace, access.role)
 
@@ -87,9 +85,7 @@ async def update_workspace(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    access = WorkspaceService.get_workspace_access(
-        db, workspace_id=workspace_id, user=current_user
-    )
+    access = WorkspaceService.get_workspace_access(db, workspace_id=workspace_id, user=current_user)
     workspace = WorkspaceService.update_workspace(db, access=access, payload=payload)
     return _to_workspace_out(workspace, access.role)
 
@@ -104,9 +100,7 @@ async def list_members(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    access = WorkspaceService.get_workspace_access(
-        db, workspace_id=workspace_id, user=current_user
-    )
+    access = WorkspaceService.get_workspace_access(db, workspace_id=workspace_id, user=current_user)
     members = WorkspaceService.list_members(db, access=access)
     return [_to_member_out(member, db) for member in members]
 
@@ -123,9 +117,7 @@ async def add_member(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    access = WorkspaceService.get_workspace_access(
-        db, workspace_id=workspace_id, user=current_user
-    )
+    access = WorkspaceService.get_workspace_access(db, workspace_id=workspace_id, user=current_user)
     membership = WorkspaceService.add_member(
         db, access=access, user_id=payload.user_id, role=payload.role
     )
@@ -144,9 +136,7 @@ async def update_member(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    access = WorkspaceService.get_workspace_access(
-        db, workspace_id=workspace_id, user=current_user
-    )
+    access = WorkspaceService.get_workspace_access(db, workspace_id=workspace_id, user=current_user)
     membership = WorkspaceService.update_member_role(
         db, access=access, user_id=user_id, role=payload.role
     )
@@ -164,8 +154,6 @@ async def remove_member(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    access = WorkspaceService.get_workspace_access(
-        db, workspace_id=workspace_id, user=current_user
-    )
+    access = WorkspaceService.get_workspace_access(db, workspace_id=workspace_id, user=current_user)
     membership = WorkspaceService.remove_member(db, access=access, user_id=user_id)
     return _to_member_out(membership, db)

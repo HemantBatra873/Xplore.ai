@@ -51,7 +51,11 @@ app.dependency_overrides[get_db] = override_get_db
 @pytest.fixture(scope="session")
 def setup_database():
     """
-    Create tables in the in-memory DB before tests; drop after.
+    Create tables from SQLAlchemy models before tests; drop after.
+
+    Prefer a dedicated test database when using Postgres. Do not point
+    DATABASE_URL at an Alembic-managed development database — drop_all()
+    removes application tables (and would leave a stale alembic_version).
     """
     if USING_POSTGRES:
         with engine.connect() as conn:
@@ -60,6 +64,10 @@ def setup_database():
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
+    if USING_POSTGRES:
+        with engine.connect() as conn:
+            conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
+            conn.commit()
 
 
 @pytest.fixture(scope="module")

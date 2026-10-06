@@ -6,7 +6,11 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from app.services.providers.base import LLMResult
-from app.services.tool_registry import MAX_TOOL_CALLS_PER_REQUEST, ToolExecutionContext, ToolRegistry
+from app.services.tool_registry import (
+    MAX_TOOL_CALLS_PER_REQUEST,
+    ToolExecutionContext,
+    ToolRegistry,
+)
 from app.utils.errors import AppException
 
 
@@ -101,9 +105,7 @@ def test_agent_cannot_attach_foreign_knowledge_base(client):
     token_a, _ = _register_and_login(client, "kb-a")
     token_b, _ = _register_and_login(client, "kb-b")
     ws_a = _default_workspace(client, token_a)
-    kb_a = client.get(
-        "/api/v1/knowledge-bases/", headers=_auth(token_a, ws_a["id"])
-    ).json()[0]
+    kb_a = client.get("/api/v1/knowledge-bases/", headers=_auth(token_a, ws_a["id"])).json()[0]
 
     response = client.post(
         "/api/v1/agents/",

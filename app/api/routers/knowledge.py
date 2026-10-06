@@ -23,7 +23,12 @@ from app.services.llm_observability_service import (
     start_timer,
 )
 from app.services.llm_service import get_llm_client
-from app.services.rag_service import RAGService, RetrievalHit, append_session_message, load_session_history
+from app.services.rag_service import (
+    RAGService,
+    RetrievalHit,
+    append_session_message,
+    load_session_history,
+)
 from app.services.workspace_service import WorkspaceAccess
 from app.utils.file_parser import get_supported_extensions, parse_file
 from app.worker.tasks import process_document_task
@@ -72,10 +77,10 @@ def _citation_sources(hits: list[RetrievalHit]) -> list[CitationSource]:
     return sources
 
 
-def _build_rag_messages(*, query: str, hits: list[RetrievalHit], session_history: list[dict] | None):
-    context_texts = [
-        f"[Source passage {i}]:\n{hit.chunk.content}" for i, hit in enumerate(hits, 1)
-    ]
+def _build_rag_messages(
+    *, query: str, hits: list[RetrievalHit], session_history: list[dict] | None
+):
+    context_texts = [f"[Source passage {i}]:\n{hit.chunk.content}" for i, hit in enumerate(hits, 1)]
     context_str = "\n\n".join(context_texts)
     system_prompt = (
         "You are a careful question-answering assistant. Answer using the reference material below.\n"
@@ -94,7 +99,9 @@ def _build_rag_messages(*, query: str, hits: list[RetrievalHit], session_history
     ]
 
 
-@router.get("/", response_model=list[KnowledgeBaseOut], summary="List knowledge bases", tags=["Knowledge"])
+@router.get(
+    "/", response_model=list[KnowledgeBaseOut], summary="List knowledge bases", tags=["Knowledge"]
+)
 async def list_knowledge_bases(
     db: Session = Depends(get_db),
     access: WorkspaceAccess = Depends(get_workspace_access),
@@ -120,7 +127,9 @@ async def create_knowledge_base(
     return _kb_out(db, kb)
 
 
-@router.get("/{kb_id}", response_model=KnowledgeBaseOut, summary="Get a knowledge base", tags=["Knowledge"])
+@router.get(
+    "/{kb_id}", response_model=KnowledgeBaseOut, summary="Get a knowledge base", tags=["Knowledge"]
+)
 async def get_knowledge_base(
     kb_id: int,
     db: Session = Depends(get_db),
@@ -133,16 +142,19 @@ async def get_knowledge_base(
     return _kb_out(db, kb)
 
 
-@router.patch("/{kb_id}", response_model=KnowledgeBaseOut, summary="Update a knowledge base", tags=["Knowledge"])
+@router.patch(
+    "/{kb_id}",
+    response_model=KnowledgeBaseOut,
+    summary="Update a knowledge base",
+    tags=["Knowledge"],
+)
 async def update_knowledge_base(
     kb_id: int,
     payload: KnowledgeBaseUpdate,
     db: Session = Depends(get_db),
     access: WorkspaceAccess = Depends(get_workspace_access),
 ):
-    kb = KnowledgeBaseService.update(
-        db, access=access, knowledge_base_id=kb_id, payload=payload
-    )
+    kb = KnowledgeBaseService.update(db, access=access, knowledge_base_id=kb_id, payload=payload)
     return _kb_out(db, kb)
 
 

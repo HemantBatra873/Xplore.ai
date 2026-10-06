@@ -105,9 +105,7 @@ async def delete_integration(
     db: Session = Depends(get_db),
     access: WorkspaceAccess = Depends(get_workspace_access),
 ):
-    integration = IntegrationService.delete(
-        db, access=access, integration_id=integration_id
-    )
+    integration = IntegrationService.delete(db, access=access, integration_id=integration_id)
     return JSONResponse(
         content={"message": "Integration deleted", "integration_id": integration.id}
     )
@@ -123,9 +121,7 @@ async def connect_integration(
     db: Session = Depends(get_db),
     access: WorkspaceAccess = Depends(get_workspace_access),
 ):
-    integration = IntegrationService.connect(
-        db, access=access, integration_id=integration_id
-    )
+    integration = IntegrationService.connect(db, access=access, integration_id=integration_id)
     return IntegrationOut(**IntegrationService.to_out(integration))
 
 
@@ -139,9 +135,7 @@ async def refresh_tools(
     db: Session = Depends(get_db),
     access: WorkspaceAccess = Depends(get_workspace_access),
 ):
-    integration = IntegrationService.refresh_tools(
-        db, access=access, integration_id=integration_id
-    )
+    integration = IntegrationService.refresh_tools(db, access=access, integration_id=integration_id)
     return IntegrationOut(**IntegrationService.to_out(integration))
 
 
@@ -155,9 +149,7 @@ async def list_integration_tools(
     db: Session = Depends(get_db),
     access: WorkspaceAccess = Depends(get_workspace_access),
 ):
-    pairs = IntegrationService.list_tools(
-        db, access=access, integration_id=integration_id
-    )
+    pairs = IntegrationService.list_tools(db, access=access, integration_id=integration_id)
     return [
         IntegrationToolOut(**IntegrationService.tool_to_out(integration, tool))
         for integration, tool in pairs

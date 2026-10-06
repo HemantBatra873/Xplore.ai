@@ -109,9 +109,7 @@ def get_workspace_access(
         workspace = WorkspaceService.ensure_default_workspace(db, current_user)
         workspace_id = workspace.id
 
-    return WorkspaceService.get_workspace_access(
-        db, workspace_id=workspace_id, user=current_user
-    )
+    return WorkspaceService.get_workspace_access(db, workspace_id=workspace_id, user=current_user)
 
 
 def require_workspace_permission(permission: str):

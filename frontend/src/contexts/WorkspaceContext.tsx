@@ -90,7 +90,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }, [isAuthenticated])
+  }, [isAuthenticated, setCurrentWorkspace])
 
   useEffect(() => {
     if (!isAuthenticated) {

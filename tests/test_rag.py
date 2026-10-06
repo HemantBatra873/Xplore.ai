@@ -108,7 +108,9 @@ def test_query_knowledge_base_uses_current_user_scope(client, monkeypatch, db_se
         assert workspace_id == _default_workspace_id(db_session, user_id)
         assert query == "What is in my knowledge base?"
         assert top_k == 2
-        chunk = SimpleNamespace(id=1, content="A knowledge passage that belongs only to the current user", chunk_index=0)
+        chunk = SimpleNamespace(
+            id=1, content="A knowledge passage that belongs only to the current user", chunk_index=0
+        )
         document = SimpleNamespace(
             id=ready_doc.id,
             filename="ready.txt",
@@ -135,7 +137,9 @@ def test_query_knowledge_base_uses_current_user_scope(client, monkeypatch, db_se
                         return SimpleNamespace(
                             choices=[
                                 SimpleNamespace(
-                                    message=SimpleNamespace(content="Answer grounded in the current user's documents")
+                                    message=SimpleNamespace(
+                                        content="Answer grounded in the current user's documents"
+                                    )
                                 )
                             ],
                             usage=SimpleNamespace(

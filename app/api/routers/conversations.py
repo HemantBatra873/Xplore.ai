@@ -89,9 +89,7 @@ async def list_conversations(
     access: WorkspaceAccess = Depends(get_workspace_access),
 ):
     access.require_permission("conversations:read")
-    items = ConversationService.list_for_workspace(
-        db, workspace_id=access.workspace.id
-    )
+    items = ConversationService.list_for_workspace(db, workspace_id=access.workspace.id)
     return [_conversation_out(c) for c in items]
 
 
@@ -157,9 +155,7 @@ async def delete_conversation(
     db: Session = Depends(get_db),
     access: WorkspaceAccess = Depends(get_workspace_access),
 ):
-    conversation = ConversationService.delete(
-        db, access=access, conversation_id=conversation_id
-    )
+    conversation = ConversationService.delete(db, access=access, conversation_id=conversation_id)
     return JSONResponse(
         content={"message": "Conversation deleted", "conversation_id": conversation.id}
     )
@@ -175,9 +171,7 @@ async def list_messages(
     db: Session = Depends(get_db),
     access: WorkspaceAccess = Depends(get_workspace_access),
 ):
-    messages = ConversationService.list_messages(
-        db, access=access, conversation_id=conversation_id
-    )
+    messages = ConversationService.list_messages(db, access=access, conversation_id=conversation_id)
     return [_message_out(m) for m in messages]
 
 

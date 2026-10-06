@@ -15,9 +15,7 @@ from app.utils.errors import AppException
 
 class AgentService:
     @classmethod
-    def get_for_workspace(
-        cls, db: Session, *, agent_id: int, workspace_id: int
-    ) -> Agent:
+    def get_for_workspace(cls, db: Session, *, agent_id: int, workspace_id: int) -> Agent:
         agent = db.execute(
             select(Agent)
             .options(selectinload(Agent.knowledge_links))
@@ -70,9 +68,7 @@ class AgentService:
             )
 
     @classmethod
-    def _validate_tools(
-        cls, db: Session, *, workspace_id: int, tool_names: list[str]
-    ) -> set[str]:
+    def _validate_tools(cls, db: Session, *, workspace_id: int, tool_names: list[str]) -> set[str]:
         known = {
             d.name
             for d in ToolRegistry.list_definitions(db=db, workspace_id=workspace_id)
@@ -107,9 +103,7 @@ class AgentService:
         access.require_permission("agents:manage")
         name = payload.name.strip()
         existing = db.execute(
-            select(Agent).where(
-                Agent.workspace_id == access.workspace.id, Agent.name == name
-            )
+            select(Agent).where(Agent.workspace_id == access.workspace.id, Agent.name == name)
         ).scalar_one_or_none()
         if existing:
             raise AppException(
@@ -137,13 +131,9 @@ class AgentService:
         )
         db.add(agent)
         db.flush()
-        cls._set_knowledge_links(
-            db, agent=agent, knowledge_base_ids=payload.knowledge_base_ids
-        )
+        cls._set_knowledge_links(db, agent=agent, knowledge_base_ids=payload.knowledge_base_ids)
         db.commit()
-        return cls.get_for_workspace(
-            db, agent_id=agent.id, workspace_id=access.workspace.id
-        )
+        return cls.get_for_workspace(db, agent_id=agent.id, workspace_id=access.workspace.id)
 
     @classmethod
     def update(
@@ -155,9 +145,7 @@ class AgentService:
         payload: AgentUpdate,
     ) -> Agent:
         access.require_permission("agents:manage")
-        agent = cls.get_for_workspace(
-            db, agent_id=agent_id, workspace_id=access.workspace.id
-        )
+        agent = cls.get_for_workspace(db, agent_id=agent_id, workspace_id=access.workspace.id)
         data = payload.model_dump(exclude_unset=True)
         if "name" in data and data["name"] is not None:
             name = data["name"].strip()
@@ -196,21 +184,15 @@ class AgentService:
                 workspace_id=access.workspace.id,
                 knowledge_base_ids=data["knowledge_base_ids"],
             )
-            cls._set_knowledge_links(
-                db, agent=agent, knowledge_base_ids=data["knowledge_base_ids"]
-            )
+            cls._set_knowledge_links(db, agent=agent, knowledge_base_ids=data["knowledge_base_ids"])
         agent.updated_at = datetime.now(timezone.utc)
         db.commit()
-        return cls.get_for_workspace(
-            db, agent_id=agent.id, workspace_id=access.workspace.id
-        )
+        return cls.get_for_workspace(db, agent_id=agent.id, workspace_id=access.workspace.id)
 
     @classmethod
     def delete(cls, db: Session, *, access: WorkspaceAccess, agent_id: int) -> Agent:
         access.require_permission("agents:manage")
-        agent = cls.get_for_workspace(
-            db, agent_id=agent_id, workspace_id=access.workspace.id
-        )
+        agent = cls.get_for_workspace(db, agent_id=agent_id, workspace_id=access.workspace.id)
         db.delete(agent)
         db.commit()
         return agent

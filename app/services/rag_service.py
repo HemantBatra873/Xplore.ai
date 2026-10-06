@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.logging import logger
-from app.services.providers.embedding import get_embedding_provider
 from app.models.document import (
     DOCUMENT_STATUS_FAILED,
     DOCUMENT_STATUS_PROCESSING,
@@ -20,6 +19,7 @@ from app.models.document import (
     DocumentChunk,
 )
 from app.models.knowledge_base import KnowledgeBase
+from app.services.providers.embedding import get_embedding_provider
 
 try:
     from sentence_transformers import CrossEncoder
@@ -221,9 +221,7 @@ class RAGService:
             document.processing_task_id = task_id
         self.db.commit()
 
-    def requeue_document(
-        self, *, document_id: int, workspace_id: int, task_id: str
-    ) -> Document:
+    def requeue_document(self, *, document_id: int, workspace_id: int, task_id: str) -> Document:
         document = self.get_document_for_workspace(
             document_id=document_id, workspace_id=workspace_id
         )
@@ -272,7 +270,7 @@ class RAGService:
             embeddings.extend(batch_embeddings)
 
         db_chunks = []
-        for idx, (chunk_text, embedding) in enumerate(zip(chunks, embeddings)):
+        for idx, (chunk_text, embedding) in enumerate(zip(chunks, embeddings, strict=True)):
             db_chunks.append(
                 DocumentChunk(
                     document_id=document.id,
@@ -307,9 +305,7 @@ class RAGService:
             filters.append(Document.owner_id == owner_id)
         return filters
 
-    def _reciprocal_rank_fusion(
-        self, ranked_chunk_ids: list[list[int]]
-    ) -> list[tuple[int, float]]:
+    def _reciprocal_rank_fusion(self, ranked_chunk_ids: list[list[int]]) -> list[tuple[int, float]]:
         scores: dict[int, float] = {}
         for ranked in ranked_chunk_ids:
             for rank, chunk_id in enumerate(ranked, start=1):
@@ -414,7 +410,12 @@ class RAGService:
             rank_lists.append(keyword_ranked)
         fused = self._reciprocal_rank_fusion(rank_lists)
 
-        meta: dict[int, tuple[DocumentChunk, Document, Optional[KnowledgeBase], Optional[float], Optional[float]]] = {}
+        meta: dict[
+            int,
+            tuple[
+                DocumentChunk, Document, Optional[KnowledgeBase], Optional[float], Optional[float]
+            ],
+        ] = {}
         for chunk, document, kb, vector_score in vector_rows:
             meta[chunk.id] = (chunk, document, kb, vector_score, None)
         for chunk, document, kb, keyword_score in keyword_rows:
@@ -451,7 +452,7 @@ class RAGService:
             logger.info(f"==> Reranking {len(candidates)} candidate chunks with BGE-Reranker...")
             pairs = [[query, hit.chunk.content] for hit in candidates]
             rerank_scores = await self._predict_rerank_scores(reranker, pairs)
-            for hit, rerank_score in zip(candidates, rerank_scores):
+            for hit, rerank_score in zip(candidates, rerank_scores, strict=True):
                 hit.score = float(rerank_score)
             candidates.sort(key=lambda h: h.score, reverse=True)
         elif do_rerank and reranker is None:

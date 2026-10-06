@@ -26,7 +26,9 @@ export default function ObservabilityPage() {
       ])
       setStats(statsData)
       setLogs(logsData)
-    } catch {} finally {
+    } catch {
+      // Keep previous stats/logs on refresh failure
+    } finally {
       setStatsLoading(false)
       setLogsLoading(false)
     }

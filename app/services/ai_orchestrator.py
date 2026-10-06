@@ -53,6 +53,7 @@ def _title_from_content(content: str) -> str:
 
 def _resolve_provider(user: User, agent: Optional[Agent]):
     if agent and (agent.provider or agent.model_name):
+
         class _Overlay:
             pass
 
@@ -164,9 +165,7 @@ class AIOrchestrator:
             ConversationService._validate_knowledge_bases(
                 self.db, workspace_id=access.workspace.id, knowledge_base_ids=kb_ids
             )
-            KnowledgeBaseService.ensure_default_for_workspace(
-                self.db, workspace=access.workspace
-            )
+            KnowledgeBaseService.ensure_default_for_workspace(self.db, workspace=access.workspace)
             return True, kb_ids
 
         if agent is not None:

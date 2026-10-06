@@ -6,6 +6,7 @@ from typing import Any
 from urllib.parse import quote
 
 import httpx
+from fastapi import status
 
 from app.services.integrations.base import (
     AdapterExecutionResult,
@@ -14,7 +15,6 @@ from app.services.integrations.base import (
     truncate_external_content,
 )
 from app.utils.errors import AppException
-from fastapi import status
 
 GITHUB_API = "https://api.github.com"
 GITHUB_ALLOWED_HOST = "api.github.com"
@@ -158,7 +158,10 @@ class GitHubIntegrationAdapter(IntegrationAdapter):
                 data = await self._get(
                     "/search/repositories",
                     credentials,
-                    params={"q": query, "per_page": self._clamp_per_page(arguments.get("per_page"))},
+                    params={
+                        "q": query,
+                        "per_page": self._clamp_per_page(arguments.get("per_page")),
+                    },
                 )
                 items = data.get("items") if isinstance(data, dict) else []
                 lines = []
@@ -196,7 +199,9 @@ class GitHubIntegrationAdapter(IntegrationAdapter):
                 for item in data or []:
                     if item.get("pull_request"):
                         continue
-                    lines.append(f"- #{item.get('number')} {item.get('title')} [{item.get('state')}]")
+                    lines.append(
+                        f"- #{item.get('number')} {item.get('title')} [{item.get('state')}]"
+                    )
                 content = "\n".join(lines) or "No issues found."
             elif remote_name == "get_issue":
                 owner = quote(str(arguments.get("owner") or ""), safe="")

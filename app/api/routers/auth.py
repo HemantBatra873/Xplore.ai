@@ -28,7 +28,9 @@ async def get_setup_status(db: Session = Depends(get_db)):
     )
 
 
-@router.post("/setup", response_model=Token, summary="Initial setup: create an administrator and sign in")
+@router.post(
+    "/setup", response_model=Token, summary="Initial setup: create an administrator and sign in"
+)
 async def initial_setup(
     setup_in: SetupRequest,
     db: Session = Depends(get_db),

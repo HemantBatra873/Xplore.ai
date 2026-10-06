@@ -163,7 +163,11 @@ class TestTaskUpdate:
         created = client.post(
             "/api/v1/tasks/",
             headers=headers,
-            json={"title": "Partial update", "description": "Original description", "status": "pending"},
+            json={
+                "title": "Partial update",
+                "description": "Original description",
+                "status": "pending",
+            },
         )
         task_id = created.json()["id"]
         response = client.put(

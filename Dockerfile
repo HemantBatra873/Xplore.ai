@@ -1,5 +1,5 @@
-# Default base uses Huawei Cloud SWR mirror; override BASE_IMAGE in CI if needed
-ARG BASE_IMAGE=swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/python:3.9-slim
+# Override BASE_IMAGE in CI/offline environments if docker.io is unavailable
+ARG BASE_IMAGE=python:3.12-slim
 
 # ============================================
 # Stage 1: Build frontend

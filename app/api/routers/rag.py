@@ -1,5 +1,4 @@
 import json
-
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
@@ -198,7 +197,10 @@ async def delete_document(
 
 
 @router.post(
-    "/query", response_model=RAGQueryResponse, summary="Retrieve from the knowledge base and answer", tags=["RAG"]
+    "/query",
+    response_model=RAGQueryResponse,
+    summary="Retrieve from the knowledge base and answer",
+    tags=["RAG"],
 )
 async def query_knowledge_base(
     request: RAGQueryRequest,
@@ -326,7 +328,11 @@ async def query_knowledge_base(
         raise HTTPException(status_code=500, detail=f"RAG query failed: {str(e)}")
 
 
-@router.post("/query/stream", summary="Retrieve from the knowledge base and stream an answer (SSE)", tags=["RAG"])
+@router.post(
+    "/query/stream",
+    summary="Retrieve from the knowledge base and stream an answer (SSE)",
+    tags=["RAG"],
+)
 async def query_knowledge_base_stream(
     request: RAGQueryRequest,
     db: Session = Depends(get_db),
@@ -374,9 +380,7 @@ async def query_knowledge_base_stream(
         return StreamingResponse(_empty(), media_type="text/event-stream")
 
     sources = _citation_sources(hits)
-    context_texts = [
-        f"[Source passage {i}]:\n{hit.chunk.content}" for i, hit in enumerate(hits, 1)
-    ]
+    context_texts = [f"[Source passage {i}]:\n{hit.chunk.content}" for i, hit in enumerate(hits, 1)]
     context_str = "\n\n".join(context_texts)
     system_prompt = (
         "You are a careful question-answering assistant. Answer using the reference material below.\n"

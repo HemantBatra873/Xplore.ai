@@ -18,9 +18,7 @@ class Agent(Base):
     """Workspace-scoped AI agent configuration."""
 
     __tablename__ = "agents"
-    __table_args__ = (
-        UniqueConstraint("workspace_id", "name", name="uq_agents_workspace_name"),
-    )
+    __table_args__ = (UniqueConstraint("workspace_id", "name", name="uq_agents_workspace_name"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     workspace_id: Mapped[int] = mapped_column(
@@ -66,9 +64,7 @@ class AgentKnowledgeBase(Base):
 
     __tablename__ = "agent_knowledge_bases"
     __table_args__ = (
-        UniqueConstraint(
-            "agent_id", "knowledge_base_id", name="uq_agent_knowledge_bases_agent_kb"
-        ),
+        UniqueConstraint("agent_id", "knowledge_base_id", name="uq_agent_knowledge_bases_agent_kb"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)

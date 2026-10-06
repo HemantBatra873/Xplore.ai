@@ -45,7 +45,9 @@ export async function* streamQueryKnowledgeBase(
     try {
       const err = await response.json()
       errorMsg = err.detail || errorMsg
-    } catch {}
+    } catch {
+      // Keep default error message when body is not JSON
+    }
     yield { error: errorMsg }
     return
   }
@@ -78,7 +80,9 @@ export async function* streamQueryKnowledgeBase(
         try {
           const parsed = JSON.parse(data)
           yield parsed
-        } catch {}
+        } catch {
+          // Ignore malformed SSE JSON chunks
+        }
       }
     }
   } finally {

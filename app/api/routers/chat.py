@@ -17,7 +17,9 @@ router = APIRouter()
 
 
 @router.post(
-    "/", summary="Chat with the assistant", dependencies=[Depends(RateLimiter(times=20, seconds=60))]
+    "/",
+    summary="Chat with the assistant",
+    dependencies=[Depends(RateLimiter(times=20, seconds=60))],
 )
 async def chat_with_ai(
     request: ChatRequest,

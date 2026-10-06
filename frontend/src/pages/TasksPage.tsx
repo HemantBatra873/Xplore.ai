@@ -28,7 +28,9 @@ export default function TasksPage() {
     try {
       const data = await listTasks()
       setTasks(data)
-    } catch {} finally {
+    } catch {
+      // Keep previous task list on refresh failure
+    } finally {
       setLoading(false)
     }
   }
@@ -57,14 +59,18 @@ export default function TasksPage() {
     try {
       await updateTask(task.id, { status: nextStatus })
       await loadTasks()
-    } catch {}
+    } catch {
+      // Ignore toggle failures; list stays unchanged
+    }
   }
 
   async function handleDelete(id: number) {
     try {
       await deleteTask(id)
       await loadTasks()
-    } catch {}
+    } catch {
+      // Ignore delete failures; list stays unchanged
+    }
   }
 
   return (

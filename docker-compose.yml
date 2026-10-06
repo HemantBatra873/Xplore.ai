@@ -43,7 +43,9 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=xplore_db
     ports:
-      - "5432:5432"
+      # Host 5433 avoids clashing with a local Postgres often bound to 5432.
+      # Containers still reach this service at db:5432.
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

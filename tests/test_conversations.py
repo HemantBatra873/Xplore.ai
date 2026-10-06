@@ -93,9 +93,7 @@ def test_cannot_select_foreign_knowledge_base(client):
     token_a, _ = _register_and_login(client, "kb-a")
     token_b, _ = _register_and_login(client, "kb-b")
     ws_a = _default_workspace(client, token_a)
-    kb_a = client.get(
-        "/api/v1/knowledge-bases/", headers=_auth(token_a, ws_a["id"])
-    ).json()[0]
+    kb_a = client.get("/api/v1/knowledge-bases/", headers=_auth(token_a, ws_a["id"])).json()[0]
 
     response = client.post(
         "/api/v1/conversations/",
@@ -124,9 +122,7 @@ def test_send_message_persists_without_knowledge(client):
         total_tokens=3,
     )
 
-    with patch(
-        "app.services.ai_orchestrator.get_llm_provider"
-    ) as mock_provider_factory:
+    with patch("app.services.ai_orchestrator.get_llm_provider") as mock_provider_factory:
         provider = mock_provider_factory.return_value
         provider.complete = AsyncMock(return_value=fake_result)
         response = client.post(
@@ -156,9 +152,7 @@ def test_failed_llm_does_not_persist_assistant(client, db_session):
         json={"title": "Fail chat"},
     ).json()
 
-    with patch(
-        "app.services.ai_orchestrator.get_llm_provider"
-    ) as mock_provider_factory:
+    with patch("app.services.ai_orchestrator.get_llm_provider") as mock_provider_factory:
         provider = mock_provider_factory.return_value
         provider.complete = AsyncMock(side_effect=RuntimeError("provider down"))
         response = client.post(
@@ -169,9 +163,7 @@ def test_failed_llm_does_not_persist_assistant(client, db_session):
 
     assert response.status_code >= 400
     messages = list(
-        db_session.execute(
-            select(Message).where(Message.conversation_id == conv["id"])
-        )
+        db_session.execute(select(Message).where(Message.conversation_id == conv["id"]))
         .scalars()
         .all()
     )
@@ -194,9 +186,7 @@ def test_stream_empty_on_provider_error_leaves_no_assistant(client, db_session):
             yield ""
         raise RuntimeError("stream broken")
 
-    with patch(
-        "app.services.ai_orchestrator.get_llm_provider"
-    ) as mock_provider_factory:
+    with patch("app.services.ai_orchestrator.get_llm_provider") as mock_provider_factory:
         provider = mock_provider_factory.return_value
         provider.stream = failing_stream
         with client.stream(
@@ -210,9 +200,7 @@ def test_stream_empty_on_provider_error_leaves_no_assistant(client, db_session):
             assert "error" in body or "[DONE]" in body
 
     messages = list(
-        db_session.execute(
-            select(Message).where(Message.conversation_id == conv["id"])
-        )
+        db_session.execute(select(Message).where(Message.conversation_id == conv["id"]))
         .scalars()
         .all()
     )

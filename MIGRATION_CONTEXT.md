@@ -1,321 +1,167 @@
 # Xplore.ai Migration Context
 
-## Phase 1–3 status: PASS WITH FIXES
+## Phase status
 
-Identity cleanup, Workspace/Membership tenancy, and Knowledge/RAG evolution are complete. See earlier phase notes in git history for full detail. Alembic head after Phase 3: `e9f5a2b3c4d5`.
+| Phase | Name | Status |
+|-------|------|--------|
+| 1 | Identity & Foundation | Complete |
+| 2 | Workspace Architecture | Complete |
+| 3 | Knowledge & RAG | Complete |
+| 4 | Conversations & Unified AI | Complete |
+| 5 | Agents & Tools | Complete |
+| 6 | MCP & External Integrations | Complete |
+| 7 | Final Hardening, Validation & Release Readiness | Complete |
+
+Historical phase notes for Phases 1–6 remain in git history. This document is the **final** migration handoff.
 
 ---
 
-## Phase 4 status: PASS WITH FIXES
+## Phase 7 — Final hardening
 
-Persistent Conversations, unified `AIOrchestrator`, provider/embedding abstractions, citations. Migration `f1a6b3c4d5e6`.
+### Objective
 
----
+Remove environment blockers, validate migrations and the full test suite, harden security/error paths, clean branding/docs, and leave Xplore.ai portfolio-ready — without adding major new product features.
 
-## Phase 5 status: PASS WITH FIXES
+### Issues resolved in Phase 7
 
-Phase 5 adds workspace-scoped **Agents**, a controlled **Tool** layer over the existing in-process MCPService, and integrates both into `AIOrchestrator` without a second AI/chat stack.
+**Environment**
 
-### 1. Phase 5 objective
+- Installed Python 3.12.10 and created project `.venv`
+- Started Docker Desktop; Postgres (`pgvector/pg15`) + Redis healthy
+- Remapped Compose Postgres host port to `5433` to avoid clashing with a local Windows Postgres on `5432`
+- Updated `.env.example` / README accordingly
 
-Introduce Agents as the configuration boundary (system prompt, model overrides, knowledge bases, tools) and wire controlled tool execution into the Phase 4 conversation orchestration flow.
+**Code / tests**
 
-### 2. Architecture before / after
+- Fixed `ToolRegistry` misuse of `MCPService.list_handlers()` (dict keyed by name)
+- Removed startup `Base.metadata.create_all()` (schema owned by Alembic)
+- User delete now clears workspace memberships / nulls `created_by_id` safely
+- Migration `c4d9e6f7a8b9`: `workspaces.created_by_id` nullable + `ON DELETE SET NULL`
+- Updated chat advanced tests to mock `AIOrchestrator` (compat `/chat` path)
+- Fixed root health test for SPA HTML responses
+- Expanded RAG test user ID range / on-demand user creation
+- Hardened `tests/conftest.py` against destroying Alembic state on shared Postgres DBs
+- Added `pytest-asyncio`; CI/Python target moved to 3.12
+- Frontend ESLint: intentional mount-fetch patterns allowed; empty `catch` blocks fixed; lint PASS
+- Dockerfile base image switched from Huawei mirror to `python:3.12-slim`
+- Rewrote README for the actual Xplore.ai product
 
-**Before:** Conversation → optional KB retrieval → LLMProvider (no agents/tools in orchestrator).
-
-**After:**
+### Final architecture
 
 ```text
-Conversation (optional agent_id)
-      ↓
-Agent config (prompt, model, KBs, tools)
-      ↓
-AIOrchestrator
-  ├── Knowledge retrieval (Phase 3 retrieve_with_citations)
-  └── ToolRegistry → MCPService handlers (capped rounds)
-      ↓
-LLMProvider (tools when supported)
-      ↓
-Message + Citations + tool_calls_json
+                              Xplore.ai
+                                   │
+                              Workspace
+                                   │
+             ┌─────────────────────┼─────────────────────┐
+             │                     │                     │
+         Knowledge             Conversations           Agents
+             │                     │                     │
+       Documents/Chunks        Messages          Model/System Prompt
+             │                     │                     │
+             └──────────────┬──────┴─────────────────────┘
+                            │
+                     AIOrchestrator
+                            │
+             ┌──────────────┼──────────────┐
+             │              │              │
+        Retrieval       ToolRegistry    LLM Providers
+             │              │              │
+        pgvector     Internal / MCP / GitHub
+        Keyword              │
+        Reranking     External Services
 ```
 
-### 3. Files added
+There is **one** AI execution path: Conversation → Agent → `AIOrchestrator` → retrieval / `ToolRegistry` / providers. `/api/v1/chat` remains a thin compatibility wrapper.
 
-- `app/models/agent.py`
-- `app/schemas/agent.py`
-- `app/services/agent_service.py`
-- `app/services/tool_registry.py`
-- `app/api/routers/agents.py`
-- `alembic/versions/a2b7c4d5e6f7_add_agents_and_conversation_agent_link.py`
-- `tests/test_agents.py`
-- `frontend/src/services/agentService.ts`
-- `frontend/src/pages/AgentsPage.tsx`
+### Final database schema overview
 
-### 4. Files modified (important)
+Alembic head: `c4d9e6f7a8b9`
 
-- `app/services/ai_orchestrator.py` — agent + tool loop
-- `app/services/providers/base.py`, `openai_compatible.py`, `mock.py` — tool message/result support
-- `app/models/conversation.py` — `agent_id`, `tool_calls_json`
-- `app/services/conversation_service.py`, `app/schemas/conversation.py`, `app/api/routers/conversations.py`
-- `app/services/workspace_permissions.py` — `agents:*`, `tools:use`
-- `app/main.py`, `app/models/__init__.py`
-- Frontend: `useChat.ts`, `ChatArea.tsx`, `App.tsx`, `Sidebar.tsx`, `types/index.ts`, `mock/data.ts`, `conversationService.ts`
-- `docs/changes.md`, this file
-
-### 5. Database migration
-
-- **Revision:** `a2b7c4d5e6f7`
-- **Parent:** `f1a6b3c4d5e6`
-- Tables: `agents`, `agent_knowledge_bases`
-- Columns: `conversations.agent_id` (FK SET NULL), `messages.tool_calls_json`
-- No data backfill required
-
-### 6. Agent model design
-
-- Fields: `id`, `workspace_id`, `created_by_id`, `name`, `description`, `system_prompt`, optional `provider` / `model_name`, `is_enabled`, `enabled_tools` (comma-separated names), timestamps
-- Unique `(workspace_id, name)`
-- Many-to-many Knowledge via `AgentKnowledgeBase`
-- Conversation.agent_id optional; deleted agents null out the reference
-
-### 7. Tool abstraction design
-
-- `ToolRegistry` / `ToolDefinition` / `ToolExecutionContext` / `ToolResult`
-- Discovers tools from `MCPService.list_tools()` / handlers
-- Validates arguments (Pydantic dynamic models from JSON schema)
-- Enforce agent allowlist + `tools:use` permission + workspace/user requirements
-- `MAX_TOOL_CALLS_PER_REQUEST = 5`
-
-### 8. MCPService changes
-
-- **Not replaced.** Remains the in-process registry/executor.
-- New code calls MCP only through `ToolRegistry.execute(...)`.
-- No external MCP servers or transport added.
-
-### 9. AIOrchestrator changes
-
-- Loads optional Agent (conversation or per-request `agent_id`)
-- System prompt from Agent when present
-- Knowledge: request → conversation → agent KB links
-- Tool loop via `provider.complete(..., tools=...)` when `supports_tools`
-- Mock / non-tool providers skip tools cleanly
-- Streaming: tool rounds run non-stream first, then content is emitted; citations preserved
-- Persists `tool_calls_json` on assistant messages; no assistant row on failure
-
-### 10. Conversation integration
-
-- Optional `agent_id` on create/update/send/stream
-- Existing conversations without agents unchanged
-- Agent delete → `SET NULL` on conversations
-
-### 11. API endpoints
-
-| Method | Path |
-|--------|------|
-| GET | `/api/v1/agents/tools` |
-| GET/POST | `/api/v1/agents/` |
-| GET/PUT/PATCH/DELETE | `/api/v1/agents/{id}` |
-| PUT | `/api/v1/agents/{id}/knowledge-bases` |
-| PUT | `/api/v1/agents/{id}/tools` |
-
-Conversation message APIs accept optional `agent_id`.
-
-### 12. Frontend changes
-
-- `/agents` management page (prompt, KBs, tools, enable/disable)
-- Chat toolbar agent selector
-- Tool calls rendered via existing `ToolCallCard`
-- Sidebar Agents tab links to management page
-- Mock handlers for agents/tools
-
-### 13. Authorization / security
-
-| Permission | Min role |
-|------------|----------|
-| `agents:read` | member |
-| `agents:manage` | admin |
-| `tools:use` | member |
-
-- Cross-workspace agent/KB access blocked via workspace-scoped lookups
-- Tools not on agent allowlist → 403
-- Invalid tool args → 400
-- Provider API keys still never returned to frontend
-
-### 14. Tests added
-
-- `tests/test_agents.py`: isolation, member cannot manage, foreign KB attach, conversation without agent, tool validation, allowlist, tool limit constant, tools list auth
-
-### 15. Validation results
-
-| Command | Result | Notes |
-|---------|--------|-------|
-| Architecture inspection | PASS | MCP/orchestrator/conversations reviewed first |
-| Alembic `a2b7c4d5e6f7` authored | PASS | Chain `f1a6b3c4d5e6` → `a2b7c4d5e6f7` |
-| `alembic upgrade head` | BLOCKED | No usable host Python; Docker engine down |
-| `pytest` | BLOCKED | Same environment limitation |
-| `npm run build` | PASS | Succeeded after mock/data fix |
-| Static review of dual AI stacks | PASS | Chat remains thin wrapper over orchestrator |
-
-### 16. Known issues
-
-- Streaming tool UX runs tool rounds then chunks the final text (not native stream+tools deltas)
-- Anthropic/Gemini tool calling depends on OpenAI-compatible surfaces
-- Member invite test assumes workspace members API shape; not executed live
-- Frontend eslint debt remains pre-existing
-- `Base.metadata.create_all()` still runs at startup alongside Alembic
-
-### 17. Environment limitations
-
-- Host Python is Microsoft Store stub only
-- Docker Desktop Linux engine not running
-- Therefore Alembic upgrade and pytest were not executed
-
-### 18. Phase 6 handoff recommendations
-
-Completed in Phase 6 below. Historical recommendations retained for audit trail only.
-
----
-
-## Phase 6 status: PASS WITH FIXES
-
-Phase 6 extends the Phase 5 `ToolRegistry` with workspace-scoped **Integrations** (MCP HTTP + read-only GitHub) without creating a second AI execution path. `AIOrchestrator` remains the single entry point.
-
-### 1. Phase 6 objective
-
-Support external tools and MCP-compatible servers behind the existing Agent → AIOrchestrator → ToolRegistry architecture, with encrypted credentials, discovery, workspace isolation, and a minimal Integrations UI.
-
-### 2. Architecture before / after
-
-**Before:** ToolRegistry → in-process MCPService handlers only.
-
-**After:**
+Chain (Phases 2–7):
 
 ```text
-Conversation → Agent → AIOrchestrator
-  ├── Knowledge retrieval
-  └── ToolRegistry
-        ├── Internal tools (MCPService)
-        ├── MCP tools (MCPHttpTransport → remote server)
-        └── Integration tools (e.g. GitHub adapter)
-              ↓
-        External services
+… → d8e4f1a2b3c4 (workspaces)
+  → e9f5a2b3c4d5 (knowledge bases)
+  → f1a6b3c4d5e6 (conversations)
+  → a2b7c4d5e6f7 (agents)
+  → b3c8d5e6f7a8 (integrations)
+  → c4d9e6f7a8b9 (nullable workspace created_by)
 ```
 
-### 3. Integration abstraction
+Core tables: `users`, `workspaces`, `workspace_memberships`, `knowledge_bases`, `documents`, `document_chunks`, `conversations`, `messages`, `message_citations`, `agents`, `agent_knowledge_bases`, `integrations`, `integration_tools`, `tasks`, `llm_call_logs`.
 
-- Models: `Integration`, `IntegrationTool` (`app/models/integration.py`)
-- Service: `IntegrationService` (CRUD, encrypt credentials, discover, execute)
-- Adapter interface: `IntegrationAdapter` (`connect`/`validate`/`discover_tools`/`execute`)
-- Factory: `get_adapter(type)` for `mcp` and `github`
-- Credentials stored as Fernet-encrypted JSON (`credentials_encrypted`); API exposes only `has_credentials`
+### Final API overview
 
-### 4. MCP architecture
+| Area | Prefix |
+|------|--------|
+| Auth / users | `/api/v1/auth`, `/api/v1/users` |
+| Workspaces | `/api/v1/workspaces` |
+| Knowledge | `/api/v1/knowledge-bases` |
+| Conversations | `/api/v1/conversations` |
+| Chat (compat) | `/api/v1/chat` |
+| Agents / tools | `/api/v1/agents` |
+| Integrations | `/api/v1/integrations` |
+| Tasks / RAG / worker | `/api/v1/tasks`, `/api/v1/rag`, `/api/v1/worker` |
+| Health / observability | `/api/v1/health`, `/api/v1/observability` |
 
-- `MCPHttpTransport`: JSON-RPC over HTTP (`initialize`, `tools/list`, `tools/call`)
-- `MCPIntegrationAdapter` wraps transport; normalizes tools into `DiscoveredTool` / registry names `ext:{integration_id}:{remote_name}`
-- In-process Phase 5 `MCPService` remains for built-in tools (not replaced)
+### Security model
 
-### 5. MCP transport implementation
+- JWT auth; inactive users rejected
+- Workspace membership + role ranks (`workspace_permissions.py`)
+- Resources scoped by `workspace_id` / membership checks (IDOR-resistant lookups)
+- Provider and integration credentials encrypted (Fernet); never returned in API bodies
+- External tools: SSRF guards, fixed GitHub host, reject destination args, untrusted result wrappers
+- Tool allowlists, schema validation, max tool rounds
 
-- Practical initial transport: **HTTP JSON-RPC** only (`config.transport = "http"`)
-- SSRF guards via `assert_safe_http_url` (scheme, host allowlists optional, private/link-local blocked unless `allow_private=true`)
-- No stdio/SSE transports in this phase; structure allows adding later
-- Uses `httpx` (added to `requirements.txt`)
+### Tool & integration architecture
 
-### 6. Tool discovery mechanism
+- Internal tools: in-process `MCPService` via `ToolRegistry`
+- External: `IntegrationAdapter` → MCP HTTP JSON-RPC or GitHub read-only
+- Registry names: `ext:{integration_id}:{remote_name}`
+- Discovery cached in `integration_tools`; refresh replaces stale cache
 
-- `POST /integrations/{id}/connect` and `/refresh-tools` call adapter `discover_tools`
-- Results cached in `integration_tools` (refresh replaces cache to avoid stale permanent duplicates)
-- Agent tool list (`GET /agents/tools`) merges internal + workspace discovered tools
+### Deployment model
 
-### 7. ToolRegistry changes
+- Docker Compose: `api`, `db` (pgvector), `redis`, `celery_worker` (+ optional Ollama/monitor profiles)
+- Host Postgres published on **5433**; in-network `db:5432`
+- Migrations: `alembic upgrade head` (Compose API command / local venv)
+- Frontend production assets baked into API image / `frontend/dist`
 
-- `list_definitions(db, workspace_id)` includes enabled integration tools
-- `execute` routes `ext:*` tools to `IntegrationService.execute_tool`
-- Preserves allowlists, schema validation, `MAX_TOOL_CALLS_PER_REQUEST`, workspace/user/db requirements
-- Rejects LLM-supplied `url`/`endpoint`/`command`/`shell`/`executable` args on external tools
-- External results prefixed as untrusted content
+### Validation results (Phase 7)
 
-### 8. Initial integrations implemented
+| Check | Result | Notes |
+|-------|--------|-------|
+| Python environment | PASS | 3.12.10 + `.venv` |
+| Docker environment | PASS | Desktop engine running; db/redis healthy |
+| Alembic history / heads | PASS | Head `c4d9e6f7a8b9` |
+| Alembic upgrade head | PASS | Clean DB through full chain |
+| Alembic downgrade -1 / upgrade | PASS | Phase 7 migration reversible |
+| Backend tests (SQLite) | PASS | 179 passed |
+| Backend tests (Postgres `xplore_test`) | PASS | 179 passed |
+| `ruff check` | PASS | |
+| Frontend lint | PASS | 0 errors |
+| Frontend build | PASS | |
+| Auth / workspace / agent / conversation smoke | PASS | Live uvicorn + Docker Postgres/Redis |
+| Integrations types endpoint | PASS | `github`, `mcp` |
+| Secrets audit | PASS | `.env` gitignored; no real secrets committed |
+| Documentation | PASS | README + this file |
 
-1. **MCP** (HTTP JSON-RPC client)
-2. **GitHub** read-only: `search_repositories`, `get_repository`, `list_issues`, `get_issue`, `list_pull_requests` (hardcoded `api.github.com` only)
+### Known limitations
 
-### 9. Agent integration changes
+- MCP transport is HTTP JSON-RPC subset (not full SDK / stdio / SSE)
+- GitHub integration is read-only (PAT; no OAuth)
+- Streaming + tools: tool rounds complete non-stream, then final text streams
+- Embeddings require a reachable embedding provider for real document indexing
+- Host machines with Postgres already on 5432 must use Compose port 5433
+- Full Docker image rebuild of `api` was not required for validation (host uvicorn + Compose db/redis)
 
-- Agents continue to store normalized tool name lists
-- Validation accepts internal + workspace integration registry names
-- No Agent model redesign; UI shows tool `source` / integration name
+### Future improvements (do not start here)
 
-### 10. API endpoints
+1. Official MCP client SDK + additional transports behind adapters
+2. OAuth / token refresh for SaaS connectors
+3. Approval gates for write/destructive tools
+4. Deeper external-tool observability
+5. Avoid multi-agent orchestration / marketplaces / automation platforms unless product direction changes
 
-Workspace-scoped under `/api/v1/integrations`:
-
-- `GET /types`, `GET /`, `POST /`, `GET /{id}`, `PUT|PATCH /{id}`, `DELETE /{id}`
-- `POST /{id}/connect`, `POST /{id}/refresh-tools`, `GET /{id}/tools`
-
-Credentials never returned on GET/list/update responses.
-
-### 11. Database migrations
-
-- New revision: `b3c8d5e6f7a8_add_integrations_and_discovered_tools.py`
-- Revises: `a2b7c4d5e6f7`
-- Tables: `integrations`, `integration_tools` with indexes/unique constraints
-
-### 12. Security / authorization changes
-
-- Permissions: `integrations:read` (member+), `integrations:manage` (admin+)
-- Cross-workspace integration access blocked by workspace FK + service lookups
-- Encrypted credential storage; write-only credentials on create/update
-- SSRF / private-host rejection for MCP endpoints
-- GitHub fixed host; no arbitrary URL/command execution from model args
-- External content treated as untrusted in tool result wrappers
-
-### 13. Frontend changes
-
-- `/integrations` page: create/configure/enable, connect/refresh, list discovered tools (no credential display)
-- Sidebar link; Agents page shows tool source labels
-- Mock mode handlers for integrations
-
-### 14. Tests
-
-- `tests/test_integrations.py`: workspace isolation, credential leakage, discovery normalization, ToolRegistry execution, agent attachment, SSRF/URL rejection, cross-workspace execute denial
-
-### 15. Validation results
-
-| Command | Result | Notes |
-|---------|--------|-------|
-| Architecture inspection | PASS | Phase 5 ToolRegistry/orchestrator extended in place |
-| Alembic `b3c8d5e6f7a8` authored | PASS | Chain `a2b7c4d5e6f7` → `b3c8d5e6f7a8` |
-| `alembic upgrade head` | BLOCKED | No usable host Python; Docker engine down |
-| `pytest` | BLOCKED | Same environment limitation |
-| `npm run build` | PASS | Vite production build succeeded |
-| Dual orchestration check | PASS | No second AI stack; orchestrator unchanged as entry |
-| Credential / SSRF static review | PASS | Encrypted storage; URL/command arg rejection; GitHub host fixed |
-
-### 16. Known limitations
-
-- MCP transport is HTTP JSON-RPC subset, not full MCP SDK/stdio/SSE
-- GitHub OAuth not implemented (PAT/token write-only)
-- No write/destructive GitHub tools
-- No approval workflow for future dangerous capabilities (boundary documented only)
-- Discovery cache can go stale until explicit refresh
-- `allow_private` MCP endpoints are trusted-admin opt-in (SSRF risk if misused)
-
-### 17. Environment limitations
-
-- Host Python is Microsoft Store stub only (`python` / `py` unavailable)
-- Docker Desktop Linux engine not running
-- Therefore Alembic upgrade and pytest were not executed
-
-### 18. Explicit Phase 7 recommendations
-
-Phase 7 should **not** expand into a general automation platform. Prefer:
-
-1. Hardening MCP (official client SDK if available, SSE/stdio transports behind the same adapter)
-2. Optional OAuth/token refresh for GitHub and future SaaS connectors
-3. Approval gates for write/destructive integration tools
-4. Observability for external tool latency/errors
-5. Avoid multi-agent orchestration, marketplaces, scheduled autonomous loops
-
-**Out of Phase 6 scope (do not start):** multi-agent orchestration, agent marketplace, autonomous long-running agents, workflow engines, broad enterprise connectors, Phase 7 features.
+**Migration complete. Do not begin a Phase 8 product expansion from this handoff.**

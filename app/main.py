@@ -10,12 +10,12 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from redis.asyncio import Redis
 from sqlalchemy import text
 
-from app.api.middleware import RequestIDMiddleware
 import app.models.agent  # noqa: F401 — register agent models with SQLAlchemy metadata
 import app.models.conversation  # noqa: F401 — register conversation models with SQLAlchemy metadata
 import app.models.integration  # noqa: F401 — register integration models with SQLAlchemy metadata
 import app.models.knowledge_base  # noqa: F401 — register knowledge base models with SQLAlchemy metadata
 import app.models.workspace  # noqa: F401 — register workspace models with SQLAlchemy metadata
+from app.api.middleware import RequestIDMiddleware
 from app.api.routers import (
     agents,
     auth,
@@ -33,7 +33,6 @@ from app.api.routers import (
 )
 from app.core.config import settings
 from app.core.logging import logger
-from app.db.base import Base
 from app.db.session import engine
 from app.utils.errors import AppException, app_exception_handler, http_exception_handler
 
@@ -87,8 +86,9 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"pgvector extension check failed (non-fatal): {e}")
 
-    Base.metadata.create_all(bind=engine)
-    logger.info("Database tables ensured.")
+    # Schema changes are owned by Alembic (docker compose / CI run `alembic upgrade head`).
+    # Avoid create_all() here so missing migrations are not silently masked.
+    logger.info("Database schema managed by Alembic migrations.")
 
     # Redis connectivity check
     logger.info("Testing Redis connection...")

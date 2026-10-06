@@ -148,7 +148,9 @@ def get_current_weather(location: str) -> str:
         "Guangzhou": "Light rain, 26 C, humid",
     }
     # Default fallback
-    return weather_data.get(location, f"Weather is unknown for {location}; temperature is about 20 C")
+    return weather_data.get(
+        location, f"Weather is unknown for {location}; temperature is about 20 C"
+    )
 
 
 def get_system_status() -> str:
@@ -170,9 +172,7 @@ def get_system_status() -> str:
         return "Unable to read system status."
 
 
-def list_tasks(
-    db: Session, user_id: int, workspace_id: int, status: str = None
-) -> str:
+def list_tasks(db: Session, user_id: int, workspace_id: int, status: str = None) -> str:
     logger.info(
         f"==> Running local tool: list tasks (user_id={user_id}, "
         f"workspace_id={workspace_id}, status={status})"
@@ -301,7 +301,9 @@ async def generate_chat_reply(
     info = get_llm_client(user)
 
     if not info.client.api_key:
-        return "System notice: no LLM API key is configured. Add one in system or personal settings."
+        return (
+            "System notice: no LLM API key is configured. Add one in system or personal settings."
+        )
 
     started_at = start_timer()
 

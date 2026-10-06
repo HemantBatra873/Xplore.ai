@@ -56,13 +56,18 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _auto_enable_mock(self) -> "Settings":
-        """Enable mock mode automatically when LLM_API_KEY is empty."""
+        """Enable LLM mock mode when no API key is configured (local/dev convenience).
+
+        Production deployments should set LLM_API_KEY (or an explicit LLM_MOCK=true
+        only when canned responses are intentional). Empty key + LLM_MOCK=false still
+        auto-enables mock so the API can start without a provider.
+        """
         if not self.LLM_API_KEY and not self.LLM_MOCK:
             import logging
 
             logging.getLogger(__name__).warning(
-                "LLM_API_KEY is empty, so mock mode has been enabled. "
-                "Set LLM_API_KEY or LLM_MOCK=false to change this behavior."
+                "LLM_API_KEY is empty; enabling LLM_MOCK=true for development. "
+                "Set a real LLM_API_KEY for production traffic."
             )
             self.LLM_MOCK = True
         return self

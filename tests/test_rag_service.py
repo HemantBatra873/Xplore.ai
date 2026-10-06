@@ -23,7 +23,7 @@ from app.services.workspace_service import WorkspaceService
 
 _owner_counter = 99000
 
-_MAX_TEST_USER_ID = 99020
+_MAX_TEST_USER_ID = 99200
 
 
 def _ensure_test_users_exist(db):
@@ -52,10 +52,24 @@ def _ensure_test_users_exist(db):
             WorkspaceService.create_personal_workspace(db, user)
 
 
-def _ws(db, owner_id: int) -> int:
+def _ensure_user(db, owner_id: int) -> User:
     user = db.get(User, owner_id)
     if user is None:
-        raise ValueError(f"User {owner_id} not found")
+        user = User(
+            id=owner_id,
+            username=f"ragtest_{owner_id}",
+            email=f"ragtest_{owner_id}@example.com",
+            hashed_password="hashed",
+            is_active=True,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    return user
+
+
+def _ws(db, owner_id: int) -> int:
+    user = _ensure_user(db, owner_id)
     if user.default_workspace_id is None:
         WorkspaceService.create_personal_workspace(db, user)
         db.refresh(user)
@@ -68,7 +82,9 @@ def _kb(db, workspace_id: int) -> int:
     return kb.id
 
 
-def _create_doc(svc, db, *, owner_id: int, filename: str, content: str, workspace_id: int | None = None):
+def _create_doc(
+    svc, db, *, owner_id: int, filename: str, content: str, workspace_id: int | None = None
+):
     ws = workspace_id if workspace_id is not None else _ws(db, owner_id)
     return svc.create_document_record(
         filename=filename,
@@ -254,7 +270,11 @@ class TestRAGRetrievalIsolation:
         owner_b = _next_owner()
         svc = RAGService(db_session)
         doc = _create_doc(
-            svc, db_session, owner_id=owner_a, filename="secret.txt", content="workspace a secret material"
+            svc,
+            db_session,
+            owner_id=owner_a,
+            filename="secret.txt",
+            content="workspace a secret material",
         )
         self._process_with_fake_embeddings(svc, doc.id)
         ws_a = _ws(db_session, owner_a)
@@ -326,7 +346,11 @@ class TestRAGRetrievalIsolation:
         svc = RAGService(db_session)
         ws_id = _ws(db_session, owner)
         doc = _create_doc(
-            svc, db_session, owner_id=owner, filename="temp.txt", content="temporary retrieval content"
+            svc,
+            db_session,
+            owner_id=owner,
+            filename="temp.txt",
+            content="temporary retrieval content",
         )
         self._process_with_fake_embeddings(svc, doc.id)
         assert svc.has_ready_documents(workspace_id=ws_id) is True

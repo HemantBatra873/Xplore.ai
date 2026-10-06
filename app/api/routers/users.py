@@ -4,11 +4,11 @@ from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_superuser, get_current_active_user, get_db
-from app.utils.errors import AppException
 from app.core.config import settings
 from app.models.user import User
 from app.schemas.user import PasswordUpdate, UserCreate, UserLLMConfigUpdate, UserOut
 from app.services.user_service import UserService
+from app.utils.errors import AppException
 from app.utils.rate_limit import RateLimiter
 
 router = APIRouter()
@@ -17,7 +17,9 @@ router = APIRouter()
 register_limiter = RateLimiter(times=5, seconds=3600) if not settings.TESTING else None
 
 
-@router.post("/", response_model=UserOut, status_code=status.HTTP_201_CREATED, summary="Create a user")
+@router.post(
+    "/", response_model=UserOut, status_code=status.HTTP_201_CREATED, summary="Create a user"
+)
 async def create_user(user_in: UserCreate, request: Request, db: Session = Depends(get_db)):
     """Register a new user. Rate limited to 5 registrations per IP per hour."""
     if register_limiter:
@@ -31,7 +33,9 @@ async def get_user_me(current_user: User = Depends(get_current_active_user)):
     return current_user
 
 
-@router.put("/me/llm-config", response_model=UserOut, summary="Update the current user LLM configuration")
+@router.put(
+    "/me/llm-config", response_model=UserOut, summary="Update the current user LLM configuration"
+)
 async def update_user_llm_config(
     config_in: UserLLMConfigUpdate,
     db: Session = Depends(get_db),

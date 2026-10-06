@@ -25,7 +25,11 @@ class TaskStatusResponse(BaseModel):
     result: Optional[dict] = None
 
 
-@router.post("/process", response_model=TaskStatusResponse, summary="Submit an asynchronous document-processing task")
+@router.post(
+    "/process",
+    response_model=TaskStatusResponse,
+    summary="Submit an asynchronous document-processing task",
+)
 async def trigger_document_processing(
     request: DocumentProcessRequest,
     db: Session = Depends(get_db),
@@ -59,7 +63,9 @@ async def trigger_document_processing(
     )
 
 
-@router.get("/status/{task_id}", response_model=TaskStatusResponse, summary="Get asynchronous task status")
+@router.get(
+    "/status/{task_id}", response_model=TaskStatusResponse, summary="Get asynchronous task status"
+)
 async def get_task_status(
     task_id: str,
     db: Session = Depends(get_db),

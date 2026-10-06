@@ -47,14 +47,18 @@ export default function TasksPanel() {
     try {
       await updateTask(task.id, { status: nextStatus })
       await loadTasks()
-    } catch {}
+    } catch {
+      // Ignore toggle failures; list stays unchanged
+    }
   }
 
   async function handleDelete(id: number) {
     try {
       await deleteTask(id)
       await loadTasks()
-    } catch {}
+    } catch {
+      // Ignore delete failures; list stays unchanged
+    }
   }
 
   return (

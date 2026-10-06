@@ -62,7 +62,9 @@ class WorkspaceService:
             suffix += 1
 
     @classmethod
-    def create_personal_workspace(cls, db: Session, user: User, *, commit: bool = True) -> Workspace:
+    def create_personal_workspace(
+        cls, db: Session, user: User, *, commit: bool = True
+    ) -> Workspace:
         """Create a default personal workspace and owner membership for a user."""
         name = f"{user.username}'s Workspace"
         workspace = Workspace(
@@ -116,9 +118,7 @@ class WorkspaceService:
         return cls.create_personal_workspace(db, user)
 
     @classmethod
-    def create_workspace(
-        cls, db: Session, *, user: User, payload: WorkspaceCreate
-    ) -> Workspace:
+    def create_workspace(cls, db: Session, *, user: User, payload: WorkspaceCreate) -> Workspace:
         workspace = Workspace(
             name=payload.name.strip(),
             slug=cls._unique_slug(db, payload.slug or payload.name),
@@ -171,9 +171,7 @@ class WorkspaceService:
         ).scalar_one_or_none()
 
     @classmethod
-    def get_workspace_access(
-        cls, db: Session, *, workspace_id: int, user: User
-    ) -> WorkspaceAccess:
+    def get_workspace_access(cls, db: Session, *, workspace_id: int, user: User) -> WorkspaceAccess:
         workspace = db.get(Workspace, workspace_id)
         if workspace is None or not workspace.is_active:
             raise AppException(
@@ -246,9 +244,7 @@ class WorkspaceService:
                 code=1002, msg="User not found", status_code=status.HTTP_404_NOT_FOUND
             )
 
-        existing = cls.get_membership(
-            db, workspace_id=access.workspace.id, user_id=user_id
-        )
+        existing = cls.get_membership(db, workspace_id=access.workspace.id, user_id=user_id)
         if existing:
             raise AppException(
                 code=10409,
@@ -277,9 +273,7 @@ class WorkspaceService:
     ) -> WorkspaceMembership:
         access.require_permission("members:manage")
         role = normalize_role(role)
-        membership = cls.get_membership(
-            db, workspace_id=access.workspace.id, user_id=user_id
-        )
+        membership = cls.get_membership(db, workspace_id=access.workspace.id, user_id=user_id)
         if membership is None:
             raise AppException(
                 code=10404,
@@ -300,12 +294,16 @@ class WorkspaceService:
                 status_code=status.HTTP_403_FORBIDDEN,
             )
         if membership.role == WORKSPACE_ROLE_OWNER and role != WORKSPACE_ROLE_OWNER:
-            owner_count = db.execute(
-                select(WorkspaceMembership).where(
-                    WorkspaceMembership.workspace_id == access.workspace.id,
-                    WorkspaceMembership.role == WORKSPACE_ROLE_OWNER,
+            owner_count = (
+                db.execute(
+                    select(WorkspaceMembership).where(
+                        WorkspaceMembership.workspace_id == access.workspace.id,
+                        WorkspaceMembership.role == WORKSPACE_ROLE_OWNER,
+                    )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             if len(owner_count) <= 1:
                 raise AppException(
                     code=10410,
@@ -323,9 +321,7 @@ class WorkspaceService:
         cls, db: Session, *, access: WorkspaceAccess, user_id: int
     ) -> WorkspaceMembership:
         access.require_permission("members:remove")
-        membership = cls.get_membership(
-            db, workspace_id=access.workspace.id, user_id=user_id
-        )
+        membership = cls.get_membership(db, workspace_id=access.workspace.id, user_id=user_id)
         if membership is None:
             raise AppException(
                 code=10404,
@@ -339,12 +335,16 @@ class WorkspaceService:
                 status_code=status.HTTP_403_FORBIDDEN,
             )
         if membership.role == WORKSPACE_ROLE_OWNER:
-            owners = db.execute(
-                select(WorkspaceMembership).where(
-                    WorkspaceMembership.workspace_id == access.workspace.id,
-                    WorkspaceMembership.role == WORKSPACE_ROLE_OWNER,
+            owners = (
+                db.execute(
+                    select(WorkspaceMembership).where(
+                        WorkspaceMembership.workspace_id == access.workspace.id,
+                        WorkspaceMembership.role == WORKSPACE_ROLE_OWNER,
+                    )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             if len(owners) <= 1:
                 raise AppException(
                     code=10410,

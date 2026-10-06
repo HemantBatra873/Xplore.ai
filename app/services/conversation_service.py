@@ -5,7 +5,7 @@ from fastapi import status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models.conversation import Conversation, Message, MessageCitation
+from app.models.conversation import Conversation, Message
 from app.models.knowledge_base import KnowledgeBase
 from app.schemas.conversation import ConversationCreate, ConversationUpdate
 from app.services.workspace_service import WorkspaceAccess
@@ -41,12 +41,16 @@ class ConversationService:
     ) -> None:
         if not knowledge_base_ids:
             return
-        rows = db.execute(
-            select(KnowledgeBase.id).where(
-                KnowledgeBase.workspace_id == workspace_id,
-                KnowledgeBase.id.in_(knowledge_base_ids),
+        rows = (
+            db.execute(
+                select(KnowledgeBase.id).where(
+                    KnowledgeBase.workspace_id == workspace_id,
+                    KnowledgeBase.id.in_(knowledge_base_ids),
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         found = set(rows)
         missing = [kb_id for kb_id in knowledge_base_ids if kb_id not in found]
         if missing:
@@ -80,9 +84,7 @@ class ConversationService:
     ) -> Conversation:
         conversation = db.execute(
             select(Conversation)
-            .options(
-                selectinload(Conversation.messages).selectinload(Message.citations)
-            )
+            .options(selectinload(Conversation.messages).selectinload(Message.citations))
             .where(
                 Conversation.id == conversation_id,
                 Conversation.workspace_id == workspace_id,
@@ -110,9 +112,7 @@ class ConversationService:
         return list(db.execute(stmt).scalars().all())
 
     @classmethod
-    def _validate_agent(
-        cls, db: Session, *, workspace_id: int, agent_id: Optional[int]
-    ) -> None:
+    def _validate_agent(cls, db: Session, *, workspace_id: int, agent_id: Optional[int]) -> None:
         if agent_id is None:
             return
         from app.services.agent_service import AgentService
@@ -134,9 +134,7 @@ class ConversationService:
             workspace_id=access.workspace.id,
             knowledge_base_ids=payload.knowledge_base_ids,
         )
-        cls._validate_agent(
-            db, workspace_id=access.workspace.id, agent_id=payload.agent_id
-        )
+        cls._validate_agent(db, workspace_id=access.workspace.id, agent_id=payload.agent_id)
         title = (payload.title or "New conversation").strip() or "New conversation"
         conversation = Conversation(
             workspace_id=access.workspace.id,
@@ -177,9 +175,7 @@ class ConversationService:
             )
             conversation.knowledge_base_ids = serialize_kb_ids(data["knowledge_base_ids"])
         if "agent_id" in data:
-            cls._validate_agent(
-                db, workspace_id=access.workspace.id, agent_id=data["agent_id"]
-            )
+            cls._validate_agent(db, workspace_id=access.workspace.id, agent_id=data["agent_id"])
             conversation.agent_id = data["agent_id"]
         conversation.updated_at = datetime.now(timezone.utc)
         db.commit()
@@ -187,9 +183,7 @@ class ConversationService:
         return conversation
 
     @classmethod
-    def delete(
-        cls, db: Session, *, access: WorkspaceAccess, conversation_id: int
-    ) -> Conversation:
+    def delete(cls, db: Session, *, access: WorkspaceAccess, conversation_id: int) -> Conversation:
         access.require_permission("conversations:write")
         conversation = cls.get_for_workspace(
             db, conversation_id=conversation_id, workspace_id=access.workspace.id

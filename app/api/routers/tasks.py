@@ -11,7 +11,9 @@ from app.services.workspace_service import WorkspaceAccess
 router = APIRouter()
 
 
-@router.post("/", response_model=TaskOut, status_code=status.HTTP_201_CREATED, summary="Create a task")
+@router.post(
+    "/", response_model=TaskOut, status_code=status.HTTP_201_CREATED, summary="Create a task"
+)
 async def create_task(
     task_in: TaskCreate,
     db: Session = Depends(get_db),
@@ -36,9 +38,7 @@ async def list_tasks(
 ):
     """List tasks for the current workspace with optional pagination."""
     access.require_permission("resources:read")
-    return TaskService.list_tasks(
-        db, workspace_id=access.workspace.id, skip=skip, limit=limit
-    )
+    return TaskService.list_tasks(db, workspace_id=access.workspace.id, skip=skip, limit=limit)
 
 
 @router.get("/{task_id}", response_model=TaskOut, summary="Get task details")
@@ -61,9 +61,7 @@ async def update_task(
 ):
     """Update a task title, description, or status."""
     access.require_permission("resources:write")
-    return TaskService.update_task(
-        db, task_id, workspace_id=access.workspace.id, task_in=task_in
-    )
+    return TaskService.update_task(db, task_id, workspace_id=access.workspace.id, task_in=task_in)
 
 
 @router.delete("/{task_id}", response_model=TaskOut, summary="Delete a task")

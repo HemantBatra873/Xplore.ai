@@ -36,7 +36,9 @@ def process_document_task(self, document_id: int):
                 task_id=self.request.id,
             )
         )
-        logger.info(f"==> Document processing finished, document ID: {document_id}, chunks: {document.chunks_count}")
+        logger.info(
+            f"==> Document processing finished, document ID: {document_id}, chunks: {document.chunks_count}"
+        )
         return {
             "document_id": document.id,
             "status": document.status,

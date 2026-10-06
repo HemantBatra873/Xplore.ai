@@ -1,10 +1,11 @@
 from fastapi import status
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from app.core.logging import logger
 from app.core.security import get_password_hash, verify_password
 from app.models.user import User
+from app.models.workspace import Workspace, WorkspaceMembership
 from app.schemas.user import PasswordUpdate, UserCreate, UserLLMConfigUpdate
 from app.services.workspace_service import WorkspaceService
 from app.utils.encryption import encrypt_api_key
@@ -79,6 +80,14 @@ class UserService:
             raise AppException(
                 code=1002, msg="User not found", status_code=status.HTTP_404_NOT_FOUND
             )
+        # Break workspace ownership / membership links before ORM delete so SQLite
+        # and Postgres both succeed (workspaces survive with null created_by_id).
+        user.default_workspace_id = None
+        db.flush()
+        db.execute(
+            update(Workspace).where(Workspace.created_by_id == user_id).values(created_by_id=None)
+        )
+        db.execute(delete(WorkspaceMembership).where(WorkspaceMembership.user_id == user_id))
         db.delete(user)
         db.commit()
         logger.info(f"User deleted successfully. ID: {user_id}")

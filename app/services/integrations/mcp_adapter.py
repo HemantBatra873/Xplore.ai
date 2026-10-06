@@ -7,6 +7,7 @@ from typing import Any, Optional
 from uuid import uuid4
 
 import httpx
+from fastapi import status
 
 from app.core.logging import logger
 from app.services.integrations.base import (
@@ -18,7 +19,6 @@ from app.services.integrations.base import (
     truncate_external_content,
 )
 from app.utils.errors import AppException
-from fastapi import status
 
 
 class MCPHttpTransport:
@@ -52,7 +52,9 @@ class MCPHttpTransport:
         if self._session_id:
             headers["Mcp-Session-Id"] = self._session_id
 
-        async with httpx.AsyncClient(timeout=self.timeout_seconds, follow_redirects=False) as client:
+        async with httpx.AsyncClient(
+            timeout=self.timeout_seconds, follow_redirects=False
+        ) as client:
             response = await client.post(self.endpoint, json=payload, headers=headers)
 
         if "mcp-session-id" in response.headers:
@@ -205,10 +207,14 @@ class MCPIntegrationAdapter(IntegrationAdapter):
             name = str(tool.get("name") or "").strip()
             if not name:
                 continue
-            schema = tool.get("inputSchema") or tool.get("input_schema") or {
-                "type": "object",
-                "properties": {},
-            }
+            schema = (
+                tool.get("inputSchema")
+                or tool.get("input_schema")
+                or {
+                    "type": "object",
+                    "properties": {},
+                }
+            )
             if not isinstance(schema, dict):
                 schema = {"type": "object", "properties": {}}
             discovered.append(
