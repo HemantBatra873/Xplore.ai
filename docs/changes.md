@@ -1,5 +1,15 @@
 # Change Log
 
+## Phase 5: Agents & Tools
+
+- Added workspace-scoped `Agent` and `AgentKnowledgeBase` models with Alembic migration `a2b7c4d5e6f7`.
+- Introduced `ToolRegistry` over the existing in-process MCPService (validation, allowlists, max tool rounds).
+- Extended `AIOrchestrator` for agent system prompts, KB links, controlled tool calling, and `tool_calls_json` persistence.
+- Conversations may optionally reference an Agent (`agent_id`, SET NULL on delete).
+- Added `/api/v1/agents` CRUD + knowledge/tools configuration; permissions `agents:read|manage`, `tools:use`.
+- Frontend: Agents page, chat agent selector, tool-call display via existing ToolCallCard.
+- Added `tests/test_agents.py`.
+
 ## Phase 4: Conversations, Unified AI & Providers
 
 - Added workspace-scoped `Conversation`, `Message`, and `MessageCitation` models with Alembic migration `f1a6b3c4d5e6`.
@@ -42,4 +52,4 @@
 - Preserved current chat, task, document, RAG, background processing, authentication, mock mode, and observability behavior.
 - Added `MIGRATION_CONTEXT.md` as the migration handoff record.
 
-Phase 5+ features (agents, tools framework, MCP, integrations) remain out of scope until their phase.
+Phase 6+ features (external integrations, MCP transport, automation) remain out of scope until their phase.

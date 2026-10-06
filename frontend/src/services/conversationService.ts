@@ -15,6 +15,7 @@ export async function createConversation(payload: {
   title?: string
   use_knowledge?: boolean
   knowledge_base_ids?: number[]
+  agent_id?: number | null
 }): Promise<Conversation> {
   const response = await api.post<Conversation>('/conversations/', payload)
   return response.data
@@ -31,6 +32,7 @@ export async function updateConversation(
     title?: string
     use_knowledge?: boolean
     knowledge_base_ids?: number[] | null
+    agent_id?: number | null
   },
 ): Promise<Conversation> {
   const response = await api.patch<Conversation>(`/conversations/${id}`, payload)
@@ -74,6 +76,7 @@ export async function* streamMessage(
   options?: {
     use_knowledge?: boolean
     knowledge_base_ids?: number[]
+    agent_id?: number | null
     top_k?: number
   },
 ): AsyncGenerator<{
@@ -81,6 +84,7 @@ export async function* streamMessage(
   reasoning?: string
   error?: string
   sources?: CitationSource[]
+  tool_calls?: unknown
   user_message_id?: number
   assistant_message_id?: number
 }> {

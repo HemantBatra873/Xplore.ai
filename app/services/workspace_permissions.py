@@ -32,6 +32,9 @@ PERMISSIONS = {
     "knowledge:admin": ROLE_RANK[WORKSPACE_ROLE_ADMIN],
     "conversations:read": ROLE_RANK[WORKSPACE_ROLE_MEMBER],
     "conversations:write": ROLE_RANK[WORKSPACE_ROLE_MEMBER],
+    "agents:read": ROLE_RANK[WORKSPACE_ROLE_MEMBER],
+    "agents:manage": ROLE_RANK[WORKSPACE_ROLE_ADMIN],
+    "tools:use": ROLE_RANK[WORKSPACE_ROLE_MEMBER],
 }
 
 

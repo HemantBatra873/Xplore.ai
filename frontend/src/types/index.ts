@@ -24,6 +24,7 @@ export interface Conversation {
   title: string
   use_knowledge: boolean
   knowledge_base_ids: number[]
+  agent_id?: number | null
   created_at: string
   updated_at: string
 }
@@ -40,7 +41,33 @@ export interface ConversationMessage {
   status: string
   error_message?: string | null
   citations: CitationSource[]
+  tool_calls?: ToolCall[]
   created_at: string
+}
+
+export interface Agent {
+  id: number
+  workspace_id: number
+  created_by_id: number | null
+  name: string
+  description: string | null
+  system_prompt: string
+  provider: string | null
+  model_name: string | null
+  is_enabled: boolean
+  knowledge_base_ids: number[]
+  enabled_tools: string[]
+  created_at: string
+  updated_at: string
+}
+
+export interface ToolInfo {
+  name: string
+  description: string
+  input_schema: Record<string, unknown>
+  requires_workspace: boolean
+  requires_user: boolean
+  enabled: boolean
 }
 
 export interface Message {

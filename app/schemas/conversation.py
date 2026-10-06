@@ -10,12 +10,14 @@ class ConversationCreate(BaseModel):
     title: Optional[str] = Field(None, max_length=200)
     use_knowledge: bool = False
     knowledge_base_ids: Optional[List[int]] = None
+    agent_id: Optional[int] = None
 
 
 class ConversationUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=200)
     use_knowledge: Optional[bool] = None
     knowledge_base_ids: Optional[List[int]] = None
+    agent_id: Optional[int] = None
 
 
 class ConversationOut(BaseModel):
@@ -25,6 +27,7 @@ class ConversationOut(BaseModel):
     title: str
     use_knowledge: bool
     knowledge_base_ids: List[int] = []
+    agent_id: Optional[int] = None
     created_at: datetime
     updated_at: datetime
 
@@ -42,6 +45,7 @@ class MessageOut(BaseModel):
     content: str
     status: str
     error_message: Optional[str] = None
+    tool_calls: List[dict] = []
     citations: List[MessageCitationOut] = []
     created_at: datetime
 
@@ -57,6 +61,7 @@ class SendMessageRequest(BaseModel):
     # Per-request overrides (optional); fall back to conversation settings
     use_knowledge: Optional[bool] = None
     knowledge_base_ids: Optional[List[int]] = None
+    agent_id: Optional[int] = None
     top_k: int = Field(3, ge=1, le=10)
     enable_rerank: Optional[bool] = None
     enable_hybrid: Optional[bool] = None

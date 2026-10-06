@@ -39,6 +39,9 @@ class Conversation(Base):
     use_knowledge: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # Comma-separated knowledge base IDs; empty means all workspace KBs when use_knowledge is true
     knowledge_base_ids: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    agent_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("agents.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
@@ -51,6 +54,7 @@ class Conversation(Base):
 
     workspace = relationship("Workspace", backref="conversations")
     created_by = relationship("User", backref="conversations")
+    agent = relationship("Agent", backref="conversations")
     messages = relationship(
         "Message",
         back_populates="conversation",
@@ -74,6 +78,7 @@ class Message(Base):
         String(32), default=MESSAGE_STATUS_COMPLETE, nullable=False, index=True
     )
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    tool_calls_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )

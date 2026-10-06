@@ -13,16 +13,18 @@ export default function ChatArea() {
     loading,
     error,
     knowledgeBases,
+    agents,
     useKnowledge,
     selectedKbIds,
+    selectedAgentId,
     sendMessage,
     startNewConversation,
     removeConversation,
     persistKnowledgeSettings,
+    persistAgentSelection,
   } = useChat()
 
   function toggleKb(id: number) {
-    // Empty selection means "all KBs". First click narrows to one KB.
     if (selectedKbIds.length === 0) {
       void persistKnowledgeSettings(true, [id])
       return
@@ -48,6 +50,26 @@ export default function ChatArea() {
 
       <div className="flex-1 flex flex-col min-w-0">
         <div className="border-b border-[var(--border-primary)] px-4 py-2 flex flex-wrap items-center gap-3 bg-[var(--bg-secondary)]">
+          <label className="inline-flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+            <span className="text-xs text-[var(--text-tertiary)] uppercase">Agent</span>
+            <select
+              value={selectedAgentId ?? ''}
+              onChange={(e) => {
+                const value = e.target.value
+                void persistAgentSelection(value ? Number(value) : null)
+              }}
+              disabled={isStreaming}
+              className="h-8 min-w-[140px] rounded-lg border border-[var(--border-primary)] bg-[var(--bg-primary)] text-sm px-2"
+            >
+              <option value="">None</option>
+              {agents.map((agent) => (
+                <option key={agent.id} value={agent.id}>
+                  {agent.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <label className="inline-flex items-center gap-2 text-sm text-[var(--text-secondary)]">
             <input
               type="checkbox"

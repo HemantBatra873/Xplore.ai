@@ -41,12 +41,21 @@ def _conversation_out(conversation) -> ConversationOut:
         title=conversation.title,
         use_knowledge=conversation.use_knowledge,
         knowledge_base_ids=parse_kb_ids(conversation.knowledge_base_ids),
+        agent_id=conversation.agent_id,
         created_at=conversation.created_at,
         updated_at=conversation.updated_at,
     )
 
 
 def _message_out(message: Message) -> MessageOut:
+    import json
+
+    tool_calls = []
+    if message.tool_calls_json:
+        try:
+            tool_calls = json.loads(message.tool_calls_json)
+        except json.JSONDecodeError:
+            tool_calls = []
     citations = [
         MessageCitationOut(
             id=c.id,
@@ -68,6 +77,7 @@ def _message_out(message: Message) -> MessageOut:
         content=message.content,
         status=message.status,
         error_message=message.error_message,
+        tool_calls=tool_calls,
         citations=citations,
         created_at=message.created_at,
     )
@@ -191,6 +201,7 @@ async def send_message(
         content=payload.content,
         use_knowledge=payload.use_knowledge,
         knowledge_base_ids=payload.knowledge_base_ids,
+        agent_id=payload.agent_id,
         top_k=payload.top_k,
         enable_rerank=payload.enable_rerank,
         enable_hybrid=payload.enable_hybrid,
@@ -242,6 +253,7 @@ async def send_message_stream(
             content=payload.content,
             use_knowledge=payload.use_knowledge,
             knowledge_base_ids=payload.knowledge_base_ids,
+            agent_id=payload.agent_id,
             top_k=payload.top_k,
             enable_rerank=payload.enable_rerank,
             enable_hybrid=payload.enable_hybrid,

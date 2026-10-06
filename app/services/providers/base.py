@@ -4,9 +4,19 @@ from typing import Any, AsyncIterator, Optional
 
 
 @dataclass
+class ToolCallRequest:
+    id: str
+    name: str
+    arguments: str
+
+
+@dataclass
 class ChatMessage:
     role: str
-    content: str
+    content: Optional[str] = None
+    tool_calls: Optional[list[ToolCallRequest]] = None
+    tool_call_id: Optional[str] = None
+    name: Optional[str] = None
 
 
 @dataclass
@@ -17,6 +27,7 @@ class LLMResult:
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
+    tool_calls: list[ToolCallRequest] = field(default_factory=list)
     raw: Any = None
 
 
@@ -40,6 +51,7 @@ class LLMProvider(ABC):
     """Provider-agnostic chat completion interface."""
 
     name: str
+    supports_tools: bool = False
 
     @abstractmethod
     async def complete(

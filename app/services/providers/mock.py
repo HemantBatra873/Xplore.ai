@@ -13,6 +13,7 @@ class MockLLMProvider(LLMProvider):
     """Offline provider that returns preset replies without an API key."""
 
     name = "mock"
+    supports_tools = False
 
     def __init__(self, model_name: str = "mock-model"):
         self.model_name = model_name

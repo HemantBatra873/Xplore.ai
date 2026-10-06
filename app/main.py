@@ -11,10 +11,12 @@ from redis.asyncio import Redis
 from sqlalchemy import text
 
 from app.api.middleware import RequestIDMiddleware
+import app.models.agent  # noqa: F401 — register agent models with SQLAlchemy metadata
 import app.models.conversation  # noqa: F401 — register conversation models with SQLAlchemy metadata
 import app.models.knowledge_base  # noqa: F401 — register knowledge base models with SQLAlchemy metadata
 import app.models.workspace  # noqa: F401 — register workspace models with SQLAlchemy metadata
 from app.api.routers import (
+    agents,
     auth,
     chat,
     conversations,
@@ -211,6 +213,7 @@ app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
 app.include_router(chat.router, prefix="/api/v1/chat", tags=["Chat"])
 app.include_router(conversations.router, prefix="/api/v1/conversations", tags=["Conversations"])
+app.include_router(agents.router, prefix="/api/v1/agents", tags=["Agents"])
 app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["Tasks"])
 app.include_router(workspaces.router, prefix="/api/v1/workspaces", tags=["Workspaces"])
 app.include_router(worker.router, prefix="/api/v1/worker", tags=["Worker (Async)"])

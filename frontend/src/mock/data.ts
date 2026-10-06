@@ -10,6 +10,8 @@ import type {
   CitationSource,
   Conversation,
   ConversationMessage,
+  Agent,
+  ToolInfo,
 } from '@/types'
 
 const NOW = new Date().toISOString()
@@ -39,6 +41,43 @@ const mockDocuments: Document[] = [
   { id: 4, filename: 'Design Notes.md', file_type: 'md', status: 'failed', chunks_count: 0, workspace_id: 1, knowledge_base_id: 1, processing_task_id: null, error_message: 'Embedding failed: dimension mismatch', created_at: daysAgo(3) },
 ]
 
+const mockAgents: Agent[] = [
+  {
+    id: 1,
+    workspace_id: 1,
+    created_by_id: 1,
+    name: 'Research assistant',
+    description: 'Uses product docs and task tools',
+    system_prompt: 'You are a research assistant for Xplore.ai.',
+    provider: null,
+    model_name: null,
+    is_enabled: true,
+    knowledge_base_ids: [1],
+    enabled_tools: ['list_tasks', 'calculate'],
+    created_at: daysAgo(3),
+    updated_at: NOW,
+  },
+]
+
+const mockTools: ToolInfo[] = [
+  {
+    name: 'calculate',
+    description: 'Evaluate arithmetic expressions',
+    input_schema: { type: 'object', properties: { expression: { type: 'string' } }, required: ['expression'] },
+    requires_workspace: false,
+    requires_user: false,
+    enabled: true,
+  },
+  {
+    name: 'list_tasks',
+    description: 'List recent tasks',
+    input_schema: { type: 'object', properties: {} },
+    requires_workspace: true,
+    requires_user: true,
+    enabled: true,
+  },
+]
+
 const mockConversations: Conversation[] = [
   {
     id: 1,
@@ -47,6 +86,7 @@ const mockConversations: Conversation[] = [
     title: 'Getting started with Xplore.ai',
     use_knowledge: true,
     knowledge_base_ids: [1],
+    agent_id: null,
     created_at: daysAgo(1),
     updated_at: NOW,
   },
@@ -257,7 +297,7 @@ const MOCK_RESPONSES: MockEntry[] = [
   { method: 'POST', path: '/chat/', handler: () => ({ reply: 'This is an offline mock response for frontend development.' }) },
   { method: 'GET', path: '/conversations/', handler: () => mockConversations },
   { method: 'POST', path: '/conversations/', handler: (data) => {
-    const d = data as { title?: string; use_knowledge?: boolean; knowledge_base_ids?: number[] }
+    const d = data as { title?: string; use_knowledge?: boolean; knowledge_base_ids?: number[]; agent_id?: number | null }
     const conv: Conversation = {
       id: Date.now(),
       workspace_id: 1,
@@ -265,6 +305,7 @@ const MOCK_RESPONSES: MockEntry[] = [
       title: d.title || 'New conversation',
       use_knowledge: !!d.use_knowledge,
       knowledge_base_ids: d.knowledge_base_ids || [],
+      agent_id: d.agent_id ?? null,
       created_at: NOW,
       updated_at: NOW,
     }
@@ -281,12 +322,52 @@ const MOCK_RESPONSES: MockEntry[] = [
     const id = Number((url || '').split('/').filter(Boolean).pop())
     const conv = mockConversations.find((c) => c.id === id)
     if (!conv) return { detail: 'Not found' }
-    const d = data as { title?: string; use_knowledge?: boolean; knowledge_base_ids?: number[] }
+    const d = data as { title?: string; use_knowledge?: boolean; knowledge_base_ids?: number[]; agent_id?: number | null }
     if (d.title !== undefined) conv.title = d.title
     if (d.use_knowledge !== undefined) conv.use_knowledge = d.use_knowledge
     if (d.knowledge_base_ids !== undefined) conv.knowledge_base_ids = d.knowledge_base_ids
+    if (d.agent_id !== undefined) conv.agent_id = d.agent_id
     conv.updated_at = NOW
     return conv
+  }},
+  { method: 'GET', path: '/agents/tools', handler: () => mockTools },
+  { method: 'GET', path: '/agents/', handler: () => mockAgents },
+  { method: 'POST', path: '/agents/', handler: (data) => {
+    const d = data as Partial<Agent>
+    const agent: Agent = {
+      id: Date.now(),
+      workspace_id: 1,
+      created_by_id: mockUser.id,
+      name: d.name || 'New agent',
+      description: d.description ?? null,
+      system_prompt: d.system_prompt || 'You are a helpful assistant for Xplore.ai.',
+      provider: d.provider ?? null,
+      model_name: d.model_name ?? null,
+      is_enabled: d.is_enabled ?? true,
+      knowledge_base_ids: d.knowledge_base_ids || [],
+      enabled_tools: d.enabled_tools || [],
+      created_at: NOW,
+      updated_at: NOW,
+    }
+    mockAgents.push(agent)
+    return agent
+  }},
+  { method: 'GET', path: '/agents/{id}', handler: (_data, url) => {
+    const id = Number((url || '').split('/').filter(Boolean).pop())
+    return mockAgents.find((a) => a.id === id) || mockAgents[0]
+  }},
+  { method: 'PUT', path: '/agents/{id}', handler: (data, url) => {
+    const id = Number((url || '').split('/').filter(Boolean).pop())
+    const agent = mockAgents.find((a) => a.id === id)
+    if (!agent) return { detail: 'Not found' }
+    Object.assign(agent, data, { updated_at: NOW })
+    return agent
+  }},
+  { method: 'DELETE', path: '/agents/{id}', handler: (_data, url) => {
+    const id = Number((url || '').split('/').filter(Boolean).pop())
+    const idx = mockAgents.findIndex((a) => a.id === id)
+    if (idx !== -1) mockAgents.splice(idx, 1)
+    return { message: 'Deleted' }
   }},
   { method: 'DELETE', path: '/conversations/{id}', handler: (_data, url) => {
     const id = Number((url || '').split('/').filter(Boolean).pop())

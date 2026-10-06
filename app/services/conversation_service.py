@@ -110,6 +110,16 @@ class ConversationService:
         return list(db.execute(stmt).scalars().all())
 
     @classmethod
+    def _validate_agent(
+        cls, db: Session, *, workspace_id: int, agent_id: Optional[int]
+    ) -> None:
+        if agent_id is None:
+            return
+        from app.services.agent_service import AgentService
+
+        AgentService.get_for_workspace(db, agent_id=agent_id, workspace_id=workspace_id)
+
+    @classmethod
     def create(
         cls,
         db: Session,
@@ -124,6 +134,9 @@ class ConversationService:
             workspace_id=access.workspace.id,
             knowledge_base_ids=payload.knowledge_base_ids,
         )
+        cls._validate_agent(
+            db, workspace_id=access.workspace.id, agent_id=payload.agent_id
+        )
         title = (payload.title or "New conversation").strip() or "New conversation"
         conversation = Conversation(
             workspace_id=access.workspace.id,
@@ -131,6 +144,7 @@ class ConversationService:
             title=title[:200],
             use_knowledge=bool(payload.use_knowledge),
             knowledge_base_ids=serialize_kb_ids(payload.knowledge_base_ids),
+            agent_id=payload.agent_id,
         )
         db.add(conversation)
         db.commit()
@@ -162,6 +176,11 @@ class ConversationService:
                 knowledge_base_ids=data["knowledge_base_ids"],
             )
             conversation.knowledge_base_ids = serialize_kb_ids(data["knowledge_base_ids"])
+        if "agent_id" in data:
+            cls._validate_agent(
+                db, workspace_id=access.workspace.id, agent_id=data["agent_id"]
+            )
+            conversation.agent_id = data["agent_id"]
         conversation.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(conversation)

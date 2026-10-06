@@ -9,6 +9,7 @@ import RegisterPage from '@/pages/RegisterPage'
 import SetupPage from '@/pages/SetupPage'
 import ChatPage from '@/pages/ChatPage'
 import KnowledgePage from '@/pages/KnowledgePage'
+import AgentsPage from '@/pages/AgentsPage'
 import TasksPage from '@/pages/TasksPage'
 import SettingsPage from '@/pages/SettingsPage'
 import HealthPage from '@/pages/HealthPage'
@@ -53,6 +54,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <KnowledgePage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/agents"
+                  element={
+                    <ProtectedRoute>
+                      <AgentsPage />
                     </ProtectedRoute>
                   }
                 />

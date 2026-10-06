@@ -1,9 +1,10 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { IconFile, IconWrench, IconX } from '@/components/ui/Icons'
 import KnowledgePanel from '@/components/knowledge/KnowledgePanel'
 import TasksPanel from '@/components/tasks/TasksPanel'
 
-type Tab = 'knowledge' | 'tasks'
+type Tab = 'knowledge' | 'tasks' | 'agents'
 
 export default function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [activeTab, setActiveTab] = useState<Tab>('knowledge')
@@ -38,6 +39,17 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
             Knowledge
           </button>
           <button
+            onClick={() => setActiveTab('agents')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'agents'
+                ? 'text-brand-500 border-b-2 border-brand-500'
+                : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
+            }`}
+          >
+            <IconWrench />
+            Agents
+          </button>
+          <button
             onClick={() => setActiveTab('tasks')}
             className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors ${
               activeTab === 'tasks'
@@ -57,7 +69,22 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
         </div>
 
         <div className="flex-1 overflow-y-auto p-3">
-          {activeTab === 'knowledge' ? <KnowledgePanel /> : <TasksPanel />}
+          {activeTab === 'knowledge' ? (
+            <KnowledgePanel />
+          ) : activeTab === 'agents' ? (
+            <div className="space-y-3 text-sm text-[var(--text-secondary)]">
+              <p>Create and configure agents on the Agents page.</p>
+              <Link
+                to="/agents"
+                className="inline-flex items-center text-brand-500 hover:underline"
+                onClick={onClose}
+              >
+                Open Agents
+              </Link>
+            </div>
+          ) : (
+            <TasksPanel />
+          )}
         </div>
       </aside>
     </>
